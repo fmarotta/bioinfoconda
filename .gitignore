@@ -1,0 +1,6 @@
+miniconda3/*
+prj/*
+!prj/bioinfoconda
+data/*
+!data/.gitignore
+docker/*
