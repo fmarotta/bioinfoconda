@@ -279,7 +279,7 @@ done
 if [[ -z "${BIOINFO_ROOT}" ]]; then
 	error '${BIOINFO_ROOT} is not defined' 3
 fi
-minicondapath=${BIOINFO_ROOT}/miniconda3
+minicondapath=$(conda info --base)
 
 # parse and validate the arguments
 if [[ $# -eq 1 ]]; then
