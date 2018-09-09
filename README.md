@@ -132,8 +132,8 @@ structure when downloading them; `X-getdata` automatically suggests a
 possible location where to save the downloads: for instance, if the URL 
 is http://foo.com/boo/bar/baz.vcf.gz, the suggestion will be 
 foo/boo/bar/baz.vcf.gz. If you are not satisfied with the suggestion, 
-you can manually override it. Files are downloaded inside the data 
-directory.
+you can manually override it. Files are downloaded inside the 
+*$BIOINFO\_ROOT/data* directory.
 
 ### Working on a Project
 
