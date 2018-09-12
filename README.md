@@ -32,11 +32,11 @@ system)
     * Instructions [here](https://docs.docker.com/install/)
 
 5. Set up the environment
-    * Add bioinfoconda's executables to your PATH
-    * Add bioinfotree's executables to your PATH
-    * Add miniconda's executables to your PATH
-    * Add bioinfotree's python and perl libraries to the environment
     * Set BIOINFO\_ROOT to the path where you cloned the repository
+    * Add bioinfoconda's executables to your PATH
+    * Add miniconda's executables to your PATH
+    * Add bioinfotree's executables to your PATH
+    * Add bioinfotree's python and perl libraries to the environment
     * Make sure you have LC\_ALL set
     * Configure the bashrc so that direnv works
 
@@ -58,18 +58,18 @@ Bioinfoconda
 # ----------------------------------------------------------------------
 
 # Export environment variables
-export PATH="/bioinfoconda/bioinfotree/local/bin:/bioinfoconda/prj/bioinfoconda/local/bin:/bioinfoconda/miniconda/bin:$PATH"
-export PYTHONPATH="/bioinfoconda/bioinfotree/local/lib/python"
-export PERL5LIB="/bioinfoconda/bioinfotree/local/lib/perl"
 export BIOINFO_ROOT="/bioinfoconda"
+export PATH="$BIOINFO_ROOT/bioinfotree/local/bin:/bioinfoconda/prj/bioinfoconda/local/bin:/bioinfoconda/miniconda/bin:$PATH"
+export PYTHONPATH="$BIOINFO_ROOT/bioinfotree/local/lib/python"
+export PERL5LIB="$BIOINFO_ROOT/bioinfotree/local/lib/perl"
 export LC_ALL="en_US.utf8"
 
 # Configure direnv
 eval "$(direnv hook bash)"
 
 # Show conda environment in prompt
-# NOTE: with direnv the prompt is not updated properly, so we need this 
-to recover the functionality.
+# NOTE: direnv is not able to properly update the prompt when the conda 
+environment changes, hence we need this to recover the functionality.
 show_conda_env()
 {
         if [ -n "$CONDA_DEFAULT_ENV" ] && \
@@ -86,7 +86,7 @@ If you are the system administrator (or if you have a great influence
 over him/her), you may as well put the environment variables in 
 */etc/environment* and append the other instructions to 
 */etc/skel/.bashrc*, so that the configuration will be available to all 
-users.
+new users.
 
 Remember to edit the previous instructions according to your 
 requirements and taste (for instance, you could need to change the path 
