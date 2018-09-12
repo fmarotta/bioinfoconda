@@ -137,6 +137,13 @@ you can manually override it. Files are downloaded inside the
 
 ### Working on a Project
 
+First of all, note that bioinfoconda is itself a project in 
+bioinfoconda. (We liked the idea of a 'metaproject', which everyone in 
+the system could contribute to and improve just like any other data 
+analysis project.) After all, the directory can always be moved to 
+another place, provided that the environment varialbes are changed as 
+well.
+
 TODO.
 
 ### Using Docker
