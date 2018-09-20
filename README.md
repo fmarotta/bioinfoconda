@@ -140,11 +140,20 @@ you can manually override it. Files are downloaded inside the
 First of all, note that bioinfoconda is itself a project in 
 bioinfoconda. (We liked the idea of a 'metaproject', which everyone in 
 the system could contribute to and improve just like any other data 
-analysis project.) After all, the directory can always be moved to 
-another place, provided that the environment varialbes are changed as 
-well.
+analysis project.) After all, the directory can be moved to another 
+place, provided that the environment varialbes are changed as well.
 
-TODO.
+When working on a project, if you need a package the first thing to try 
+is to install it through conda, i.e. `conda install package`. (In a new 
+project, by default the only packages installed in the conda environment 
+are snakemake, R and perl.) If the package is not contained in conda's 
+repositories, you can manually download it under *prj/local/lib* or 
+*prj/local/bin*; always remember to check whether you need to add the 
+executables to the PATH or the libraries to your environment. In such 
+cases, you have to edit the project's .envrc, located in the project 
+home, so that direnv is aware of your configuration.
+
+TODO
 
 ### Using Docker
 
