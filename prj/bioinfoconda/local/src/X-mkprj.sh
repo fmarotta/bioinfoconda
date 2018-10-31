@@ -2,7 +2,10 @@
 
 # TODO: edit project name, remove project
 
-# TODO: /bioinfo/miniconda3/envs/demo/lib/R/library add miniconda R
+# TODO: append library paths, don't overwrite them (I don't know if this 
+# is actually done or not...)
+
+# DONE: /bioinfo/miniconda3/envs/demo/lib/R/library add miniconda R
 # library to .Rprofile, so that it is imported in Rstudio projects
 
 options=hTGCi
@@ -222,6 +225,7 @@ function configure_direnv_conda()
 	prjname=$(basename $prjpath)
 
 	echo "source activate $prjname" >> "$prjpath/.envrc"
+        echo ".libPaths( c(\"$minicondapath/envs/$prjname/lib/R/library\", .libPaths()) )" >> $prjpath/.Rprofile
 }
 function configure_direnv_local()
 {
