@@ -25,7 +25,7 @@ Notes:
 
 	The script automatically suggests a possible location to save the
 	downloads: for instance, if the URL is http://foo.com/boo/bar/baz.vcf.gz,
-	the suggestion will be for/boo/bar/baz.vcf.gz. You will then be prompted
+	the suggestion will be foo/boo/bar/baz.vcf.gz. You will then be prompted
 	for a new location, where you can provide an alternative path.
 
 	If the URL ends with a trailing /, it is interpreted as /*.
@@ -175,7 +175,7 @@ sub find_dest
         my $fld = '';
         for (my $i = 0; $i < scalar(@levels); $i++)
         {
-                if (is_prefix($levels[$i]))
+                if (is_prefix($levels[$i]) || is_pseudo($levels[$i]))
                 {
                         next;
                 }
@@ -307,7 +307,10 @@ sub is_valid_dest
 sub is_prefix
 {
         my $level = $_[0];
-        my @prefixes = ("www", "ftp");
+
+        # list of prefixes
+        # soe: ucsc
+        my @prefixes = ("www", "ftp", "soe");
 
         for (my $i = 0; $i < scalar(@prefixes); $i++)
         {
@@ -323,7 +326,10 @@ sub is_prefix
 sub is_pseudo
 {
         my $dir = $_[0];
-        my @pseudodirs = ("pub", ".*?download.*?", "tmp", "files");
+        my @pseudodirs = ("pub", ".*?download.*?", "tmp", "files", 
+                "goldenPath");
+
+        print $dir;
 
         for (my $i = 0; $i < scalar(@pseudodirs); $i++)
         {
