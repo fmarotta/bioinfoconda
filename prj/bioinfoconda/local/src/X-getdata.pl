@@ -243,12 +243,15 @@ foo/bin/a.txt, if bar/baz is not relevant.\n";
                 {
                         if (is_valid_dest($tmp_dest))
                         {
+                                system("echo \"$ENV{USER}: Overridding suggested path $dest with new path $tmp_dest.\" | systemd-cat -t $NAME -p notice");
                                 $dest = $tmp_dest;
                                 last;
                         }
                         else
                         {
-                                print "The path must be relative to $data_root, and cannot contain '..'.\nTry again:\n";
+                                print "The path must be relative to 
+                                $data_root, and cannot contain 
+                                '..'.\nTry again:\n";
                                 next;
                         }
                 }
@@ -328,8 +331,6 @@ sub is_pseudo
         my $dir = $_[0];
         my @pseudodirs = ("pub", ".*?download.*?", "tmp", "files", 
                 "goldenPath");
-
-        print $dir;
 
         for (my $i = 0; $i < scalar(@pseudodirs); $i++)
         {
