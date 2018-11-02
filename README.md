@@ -93,6 +93,10 @@ requirements and taste (for instance, you could need to change the path
 names; also make sure not to override any environmental variable which 
 was already set for your system).
 
+## Introduction
+
+TODO: environment variables, miniconda, bioinfotree
+
 ## Usage Instructions
 
 ### Creating Projects
@@ -112,6 +116,61 @@ disable the features you do not need. Projects are created in the
 Thanks to direnv, each time you `cd` into the project directory you will 
 automatically switch to the conda environment of the project and all the 
 local executables and libraries will be available in the PATH.
+
+### Working on a Project
+
+First of all, note that bioinfoconda is itself a project in 
+bioinfoconda. (We liked the idea of a 'metaproject', which everyone in 
+the system could contribute to and improve just like any other data 
+analysis project.) After all, the directory can be moved to another 
+place, provided that the environment varialbes are changed as well.
+
+When working on a project, it is common to require a specific program to 
+perform some operations. There are two options: either an existing 
+program can be downloaded or a new program is to be written. In the 
+former case, the first thing to try is to install it with conda, i.e. 
+`conda install package`. (In a new project, by default the only packages 
+installed in the conda environment are snakemake, R and perl.) If the 
+package is not contained in conda's repositories, you can manually 
+download it by following the maintainer's instructions. Each new project 
+comes with a predefined set of subdirectories, and you should install 
+your programs in one of those; see below for a description of the 
+intended purpose of each subdirectory. Always remember to check whether 
+you need to add the executables to the PATH or the libraries to your 
+environment. In such cases, you have to edit the project's .envrc, 
+located in the project's home, so that direnv is aware of your 
+configuration. In case where you need to write your own program, you 
+should also put it in one of the project's subdirectories and make sure 
+that executables and libraries are added to the environment.
+
+Each project is created with a specific directory structure, which will 
+now be explained. Note, however, that these are just hints, so if you 
+think your project would benefit from another structure, feel free to 
+adopt it.
+
+Directly under the project's home there are two subdirectories, 
+*dataset* and *local*. The former is the one where the actual work is 
+done, therefore it will contain files with each step of the analysis, as 
+well as the results; the latter contains all the scripts, configuration 
+files and other project-related things, such as the documentation. Since 
+*local* has many subdirectories of its own, we provide a table to 
+describe each of them.
+
+Directory   | Purpose
+---         | ---
+snakefiles  | snakefiles for snakemake; they are symlinked in *dataset* 
+dockerfiles | dockerfile which can be symlinked in the project's home
+ymlfiles    | conda yml file with the list of programs in the environment
+config      | config files for snakemake and other config files
+src         | sources of programs written by you or downloaded
+bin         | symlinks to the executables of programs whose source is in src
+lib         | programs that are not executed but that contain functions called by other programs
+data        | data sets that are used only for that project
+doc         | documentation, draft of the paper
+
+TODO: practical example
+
+TODO: R Studio integration
 
 ### Downloading Data
 
@@ -135,26 +194,22 @@ foo/boo/bar/baz.vcf.gz. If you are not satisfied with the suggestion,
 you can manually override it. Files are downloaded inside the 
 *$BIOINFO\_ROOT/data* directory.
 
-### Working on a Project
-
-First of all, note that bioinfoconda is itself a project in 
-bioinfoconda. (We liked the idea of a 'metaproject', which everyone in 
-the system could contribute to and improve just like any other data 
-analysis project.) After all, the directory can be moved to another 
-place, provided that the environment varialbes are changed as well.
-
-When working on a project, if you need a package the first thing to try 
-is to install it through conda, i.e. `conda install package`. (In a new 
-project, by default the only packages installed in the conda environment 
-are snakemake, R and perl.) If the package is not contained in conda's 
-repositories, you can manually download it under *prj/local/lib* or 
-*prj/local/bin*; always remember to check whether you need to add the 
-executables to the PATH or the libraries to your environment. In such 
-cases, you have to edit the project's .envrc, located in the project 
-home, so that direnv is aware of your configuration.
-
-TODO
-
 ### Using Docker
 
 TODO.
+
+#### TODO
+
+* Log everything to journald
+
+* Possibly send mails to bioinfoadmin
+
+* Make the names coherent (bioinfo vs bioinfoconda...)
+
+* Improve docker management
+
+* Config file with default conda packages and default directories
+
+#### FIXME
+
+* If you are inside a project, X-getdata and X-mkprj are not available
