@@ -125,23 +125,25 @@ the system could contribute to and improve just like any other data
 analysis project.) After all, the directory can be moved to another 
 place, provided that the environment varialbes are changed as well.
 
-When working on a project, it is common to require a specific program to 
+When working on a project it is common to require a specific program to 
 perform some operations. There are two options: either an existing 
 program can be downloaded or a new program is to be written. In the 
 former case, the first thing to try is to install it with conda, i.e. 
-`conda install package`. (In a new project, by default the only packages 
-installed in the conda environment are snakemake, R and perl.) If the 
-package is not contained in conda's repositories, you can manually 
-download it by following the maintainer's instructions. Each new project 
-comes with a predefined set of subdirectories, and you should install 
-your programs in one of those; see below for a description of the 
-intended purpose of each subdirectory. Always remember to check whether 
-you need to add the executables to the PATH or the libraries to your 
-environment. In such cases, you have to edit the project's .envrc, 
-located in the project's home, so that direnv is aware of your 
-configuration. In case where you need to write your own program, you 
+`conda install -c channel package`. (In a new project, by default the 
+only packages installed in the conda environment are snakemake, R and 
+perl.) If the package is not contained in conda's repositories, you can 
+manually download it by following the maintainer's instructions. Each 
+new project comes with a predefined set of subdirectories, and you 
+should install your programs in one of those; see below for a 
+description of the intended purpose of each subdirectory. Always 
+remember to check whether you need to add the executables to the PATH or 
+the libraries to your environment. In such cases, you have to edit the 
+project's .envrc, located in the project's home, so that direnv is aware 
+of your configuration. When you need to write your own program you 
 should also put it in one of the project's subdirectories and make sure 
-that executables and libraries are added to the environment.
+that executables and libraries are added to the environment. An 
+important thing is that the shebang should be '#!/usr/bin/env XXX', not 
+simply '#!/usr/bin/XXX'.
 
 Each project is created with a specific directory structure, which will 
 now be explained. Note, however, that these are just hints, so if you 
@@ -168,7 +170,162 @@ lib         | programs that are not executed but that contain functions called b
 data        | data sets that are used only for that project
 doc         | documentation, draft of the paper
 
-TODO: practical example
+#### Example
+
+In order to fix these ideas, let us see an example. Say we want to 
+analyse the genome of some microbe that our colleague has just 
+sequenced: we will map the reads to a reference genome and then call the 
+variants.
+
+First of all, we need the data. Suppose the reference genome for the 
+organism we are interested in is at 
+https://microbe-genomes.com/downloads/vers\_0.5/genome.fa: we simply run 
+`X-getdata https://microbe-genomes.com/downloads/vers\_0.5/genome.fa` to 
+download the sequence, which will be saved at 
+*$BIOINFO_ROOT/data/microbe-genomes/vers_0.5/genome.fa*.
+
+Then we need the sample data. While the reference genome can be useful 
+in general for many different projects, the sample data is specific to 
+our own project, therefore we download them in 
+*$BIOINFO_ROOT/prj/microbe-genome-analysis/local/data/samples/A.fastq*.
+
+To create the project, we run `X-mkprj microbe-genome-analysis`; now we 
+have a directory structure and a conda environment, so we enter the 
+project directory with `cd $BIOINFO_ROOT/prj/microbe-genome-analysis`. 
+We are faced with two directories, dataset and local, and we enter 
+dataset, where we find a Snakefile.
+
+The snakefile is actually a symbolic link to a file in 
+local/snakefiles/. Indeed, we separate scripts and configuration files 
+(which are in local) from results (which are in dataset).
+
+Following the [snakemake 
+tutorial](https://snakemake.readthedocs.io/en/stable/tutorial/basics.html), 
+we edit the snakefile and write:
+
+```
+rule bwa_map:
+    input:
+        "$BIOINFO_ROOT/data/microbe-genomes/vers_0.5/genome.fa",
+        "$BIOINFO_ROOT/prj/microbe-genome-analysis/local/data/samples/A.fastq"
+    output:
+        "mapped_reads/A.bam"
+    shell:
+        "bwa mem {input} | samtools view -Sb - > {output}"
+```
+
+However, we still don't have the bwa and samtools programs, so we need 
+to download them. The first thing to do is a search in anaconda cloud to 
+see whether bwa is packaged; it turns out that it is and we can install 
+it with `conda install -c bioconda bwa`.
+
+Similarly, samtools is packaged in anaconda repositories, so we could 
+install it as easily as `conda install -c bioconda samtools`; 
+nevertheless, for the sake of this example, let us install it manually. 
+We browse the web and find the samtools page at 
+http://www.htslib.org/download/; we want to download the source code in 
+the project's local/src, then install samtools under local/builds, and 
+finally copy the binary files in local/bin. We run:
+
+```
+cd $BIOINFO_ROOT/prj/microbe-genome-analysis/local/src
+wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2
+tar -xf samtools-1.9.tar.bz2
+```
+
+Then, following the instruction at the download page, we run
+
+```
+cd samtools-1.9
+mkdir $BIOINFO_ROOT/prj/microbe-genome-analysis/local/builds/samtools-1.9
+./configure --prefix=$BIOINFO_ROOT/prj/microbe-genome-analysis/local/builds/samtools-1.9
+make
+make install
+```
+
+We probably will need to download additional dependencies such as 
+ncurses and bzip2. Always try to install them with conda; install them 
+manually only as a last resort.
+
+We are nearly done: we have our source code in local/src/samtools-1.9 
+and the built program in local/builds/samtools-1.9. It is good practice 
+to have each program in its own directory (at least if the program is 
+large... 30-line scripts may not deserve their own directory). Under 
+local/builds/samtools-1.9 there is a bin directory with all the 
+executables, so the only thing we need now is to add this directory to 
+our PATH environmental variable. If we install many packages, we need to 
+add many entries to the PATH. The recommended way to add some 
+executables to the PATH, however, is not to alter the PATH variable: 
+instead, we symlink them in the global bin directory, so that all the 
+executables will be in one place. The project's local/bin directory is 
+already in our PATH, therefore we just run
+
+```
+ln -s local/builds/bin/* local/bin/
+```
+
+Now we are ready to run our first snakemake rule, so we come back to the 
+dataset directory and run
+
+```
+snakemake mapped_reads/A.bam
+```
+
+If everything worked well, we should now have some results under dataset 
+while all the files we used to get those results are under local; by the 
+way, this separation of results from the rest makes it easier to backup 
+only the important things since the results can be easily obtained by 
+re-running all the workflow. Remember that if you will export this 
+project to another machine, manually installed modules like samtools 
+will have to be rebuilt! This is why using conda is so much better.
+
+Now suppose we find an excel with microbe data, which we download under 
+local/data/extra, and we want to parse it to enrich our analysis. We 
+like the perl module Spreadsheet::ParseExcel, therefore we install it. 
+Its place will be local/lib/perl5, since it is not executed directly but 
+it is called from other perl scripts. Again, first we search anaconda 
+cloud for a packaged version; luckily we find it, so we can run `conda 
+install -c biobuilds perl-spreadsheet-parseexcel`. However, for the sake 
+of this example, we will not do it; instead, we are going to install it 
+manually. For perl modules, there are actually three options: (a) the 
+first is to download the source code under 
+local/src/Spreadsheet-ParseExcel and then compile it with `perl 
+Makefile.PL INSTALL_BASE=local/lib/perl5`; (b) alternatively, we could 
+use `cpan install Spreadsheet-ParseExcel`; (c) the best option, however, 
+is to use cpanm.
+
+Method (a) is annoying because if the module has many dependencies we 
+have to manually install each of them. CPAN (method (b)) is more 
+convenient, but it has to be configured for each user individually, 
+which is really bad in bioinfoconda. The third option, CPANM, is the 
+recommended one: it is as powerful as CPAN, but there is virtually no 
+configuration to make; moreover, bioinfoconda supports it and makes sure 
+that when you run `cpanm module` from inside the project directory, the 
+module is built under /local/builds/cpanm and installed in 
+local/lib/perl5. CPANM can be installed either system-wide or locally 
+through conda.
+
+For python modules, it suffices to run `pip install modulename`; they 
+are handled by conda itself. For R modules (after making sure that the 
+package is not in conda), just run R at the console and type 
+`install.package("pkgname")`; if it is a bioconductor package, type
+
+```
+source("http://bioconductor.org/biocLite.R")
+biocLite()
+biocLite(c("pkgname1", "pkgname2"))
+```
+
+This should cover most common cases; if you cannot install your module 
+in any of those ways, probably you had better write your own module :) 
+
+If you use other languages and/or know a way to improve these 
+instructions feel free to contribute to bioinfoconda.
+
+Now that we have our module, we can start writing our own script to 
+parse the excel file. 
+
+TODO
 
 TODO: R Studio integration
 
