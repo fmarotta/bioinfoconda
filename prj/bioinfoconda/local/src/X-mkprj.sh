@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# TODO: edit project name, remove project
+# TODO: edit project name
 
 # TODO: append library paths, don't overwrite them (I don't know if this 
 # is actually done or not...)
@@ -8,8 +8,8 @@
 # DONE: /bioinfo/miniconda3/envs/demo/lib/R/library add miniconda R
 # library to .Rprofile, so that it is imported in Rstudio projects
 
-options=hTGCi
-longoptions=help,no-templates,no-git,no-conda,interactive-conda
+options=hTGCir
+longoptions=help,no-templates,no-git,no-conda,interactive-conda,remove
 
 read -r -d '' usage << END
 Usage: `basename $0` [options] prjname
@@ -20,10 +20,11 @@ Options:
         -C|--no-conda           do not create the conda environment.
         -i|--interactive-conda  enable the creation of a customised conda
                                 environment.
+        -r|--remove             remove project directory and conda environment.
 	-h|--help               print this message.
 
 Notes:
-	This script does the following things:
+        This program does the following things:
 	1) Creating a directory structure for the project.
 	2) Adding default Dockerfile and Snakefile.
 	3) Initialising a git repository.
@@ -46,7 +47,7 @@ function clean_prj()
 	prjname=$(basename $prjpath)
 
 	if conda info --envs | grep -w $prjname; then
-		conda env remove -n $prjname
+                conda env remove -y -n $prjname
 	fi
 	if [ -d $prjpath ]; then
 		rm -rf $prjpath
@@ -224,7 +225,7 @@ function configure_direnv_conda()
 	prjpath=$1
 	prjname=$(basename $prjpath)
 
-	echo "source activate $prjname" >> "$prjpath/.envrc"
+        echo "source activate $prjname" >> "$prjpath/.envrc"
         echo ".libPaths( c(\"$minicondapath/envs/$prjname/lib/R/library\", .libPaths()) )" >> $prjpath/.Rprofile
 }
 function configure_direnv_local()
@@ -247,6 +248,7 @@ templates=1
 git=1
 conda=1
 interactive=0
+remove=0
 while true; do
 	case "$1" in
 		-h|--help )
@@ -269,6 +271,10 @@ while true; do
 			interactive=1
 			shift
 			;;
+                -r|--remove )
+                        remove=1
+			shift
+                        ;;
 		-- )
 			shift
 			break
@@ -279,7 +285,14 @@ while true; do
 	esac
 done
 
-# validate environment
+# validate the options
+if ((remove)); then
+        if [[ $templates == 0 || $conda == 0 || $git == 0 || $interactive == 1 ]]; then
+                error "-r is not compatible with any other option." 5
+        fi
+fi
+
+# validate the environment
 if [[ -z "${BIOINFO_ROOT}" ]]; then
 	error '${BIOINFO_ROOT} is not defined' 3
 fi
@@ -290,8 +303,14 @@ if [[ $# -eq 1 ]]; then
 	if ! is_valid_name $1; then
 		error "Project name is not valid. Only lowercase letters, numbers, dashes and underscores are allowed." 5
 	fi
-	if [ -e ${BIOINFO_ROOT}/prj/$1 ]; then
-		error "A project with this name already exists." 7
+        if ((remove)); then
+                if ! [ -e ${BIOINFO_ROOT}/prj/$1 ]; then
+                        error "This project does not exist." 7
+                fi
+        else
+                if [ -e ${BIOINFO_ROOT}/prj/$1 ]; then
+                        error "A project with this name already exists." 7
+                fi
 	fi
 	prjpath=${BIOINFO_ROOT}/prj/$1
 else
@@ -299,6 +318,39 @@ else
 fi
 
 # start the script
+
+# Remove a project
+if ((remove)); then
+        prjname=$(basename $prjpath)
+
+        echo "Are you sure you want to remove project \"$prjname\"? Choose y/n."
+        echo "y) Yes, get rid of it!    n) No, wait! Let me reconsider..."
+
+        while read answer; do
+                case ${answer:0:1} in
+                        'y'|'Y' )
+                                echo
+                                info "Removing project $prjpath..."
+                                echo
+                                clean_prj $prjpath
+                                info "All done. The project no longer exists."
+                                break
+                                ;;
+                        'n'|'N'|'' )
+                                echo
+                                info "OK, the project is safe. Bye"
+                                break
+                                ;;
+                        * )
+                                echo -n "Please answer yes or no. Try again: [yes/no] "
+                                ;;
+                esac
+        done
+
+        exit
+fi
+
+# Otherwise create a project
 info "Creating project at $prjpath..."
 
 # make directories
@@ -355,7 +407,7 @@ if ((conda)); then
 					break
 					;;
 				* )
-					echo -n "Please answer yes or no. Try again: [yes/NO] "
+                                        echo -n "Please answer yes or no. Try again: [yes/no] "
 					;;
 			esac
 		done
