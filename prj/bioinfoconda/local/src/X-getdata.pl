@@ -313,7 +313,8 @@ sub is_prefix
 
         # list of prefixes
         # soe: ucsc
-        my @prefixes = ("www", "ftp", "soe");
+        # cse: ucsc
+        my @prefixes = ("www", "ftp", "soe", "cse");
 
         for (my $i = 0; $i < scalar(@prefixes); $i++)
         {
