@@ -1,7 +1,7 @@
 # Bioinfoconda
 
-A framework for medium-size data analysis projects, based on Conda 
-environments and easily exportable to Docker images.
+A framework to manage workflows for medium-size data analysis projects, 
+based on Conda environments and easily exportable to Docker images.
 
 In Bioinfoconda, each project has its own directory, conda environment, 
 local libraries and executables. As soon as you `cd` into the project 
@@ -117,6 +117,40 @@ Thanks to direnv, each time you `cd` into the project directory you will
 automatically switch to the conda environment of the project and all the 
 local executables and libraries will be available in the PATH.
 
+### Downloading Data
+
+In Bioinfoconda, third-party data sets which will be used in potentially 
+many different projects are stored in a separate place, the 
+*$BIOINFO\_ROOT/data* directory. To make the downloading of the data 
+easier, we created the `X-getdata` command, whose syntax is
+
+```
+X-getdata URL
+```
+
+It supports both http and ftp protocols and is able to download a 
+directory recursively, as well as to download only those files which 
+match a pattern. Third-party data sets are usually well documented and 
+structured, therefore it makes sense to maintain their original 
+structure when downloading them; `X-getdata` automatically suggests a 
+possible location where to save the downloads: for instance, if the URL 
+is http://foo.com/boo/bar/baz.vcf.gz, the suggestion will be 
+foo/boo/bar/baz.vcf.gz. If you are not satisfied with the suggestion, 
+you can manually override it. Files are downloaded inside the 
+*$BIOINFO\_ROOT/data* directory.
+
+##### TODO
+
+To warrant reproducibility we need a way to log for each downloaded file 
+its URL and the date when it was downloaded. A possible option is to 
+have a simple XML file with the index of the data directory; we should 
+then periodically compare the index with the real directory tree so that 
+when files are moved or deleted a warning appears (similar to what git 
+does). The disadvantage would be that when many files are downloaded the 
+comparison can be quite slow. Another possibility is to embed custom 
+metadata to the files using setfattr and getfattr; here the drawback 
+would be that accessing the data would be perhaps more difficult.
+
 ### Working on a Project
 
 First of all, note that bioinfoconda is itself a project in 
@@ -133,7 +167,7 @@ former case, the first thing to try is to install it with conda, i.e.
 only packages installed in the conda environment are snakemake, R and 
 perl.) If the package is not contained in conda's repositories, you can 
 manually download it by following the maintainer's instructions. Each 
-new project comes with a predefined set of subdirectories, and you 
+new project is created with a predefined set of subdirectories, and you 
 should install your programs in one of those; see below for a 
 description of the intended purpose of each subdirectory. Always 
 remember to check whether you need to add the executables to the PATH or 
@@ -152,10 +186,10 @@ adopt it.
 
 Directly under the project's home there are two subdirectories, 
 *dataset* and *local*. The former is the one where the actual work is 
-done, therefore it will contain files with each step of the analysis, as 
-well as the results; the latter contains all the scripts, configuration 
-files and other project-related things, such as the documentation. Since 
-*local* has many subdirectories of its own, we provide a table to 
+done, therefore it will contain the results of the analysis; the latter 
+contains all the scripts, configuration files and other project-related 
+things, such as the documentation or the draft of a scientific paper. 
+Since *local* has many subdirectories of its own, we provide a table to 
 describe each of them.
 
 Directory   | Purpose
@@ -167,37 +201,42 @@ config      | config files for snakemake and other config files
 src         | sources of programs written by you or downloaded
 bin         | symlinks to the executables of programs whose source is in src
 lib         | programs that are not executed but that contain functions called by other programs
+builds      | used to builds programs from source
 data        | data sets that are used only for that project
 doc         | documentation, draft of the paper
 
 #### Example
 
 In order to fix these ideas, let us see an example. Say we want to 
-analyse the genome of some microbe that our colleague has just 
+analyse the genome of some microbes that our colleague has just 
 sequenced: we will map the reads to a reference genome and then call the 
 variants.
 
-First of all, we need the data. Suppose the reference genome for the 
-organism we are interested in is at 
-https://microbe-genomes.com/downloads/vers\_0.5/genome.fa: we simply run 
-`X-getdata https://microbe-genomes.com/downloads/vers\_0.5/genome.fa` to 
+**Creating the project** To create the project, we run `X-mkprj 
+microbe-genome-analysis`; now we have a directory structure and a conda 
+environment, so we enter the project directory with `cd 
+$BIOINFO_ROOT/prj/microbe-genome-analysis`. We are faced with two 
+directories, dataset and local, and we enter dataset, where we find a 
+Snakefile -- we like Snakemake so it is the default workflow manager, 
+but any alternative will work.
+
+**Downloading data** First of all, we need the data. Suppose the 
+reference genome for the organism we are interested in is at 
+https://microbe-genomes.com/downloads/vers_0.5/genome.fa: we simply run 
+`X-getdata https://microbe-genomes.com/downloads/vers_0.5/genome.fa` to 
 download the sequence, which will be saved at 
 *$BIOINFO_ROOT/data/microbe-genomes/vers_0.5/genome.fa*.
 
 Then we need the sample data. While the reference genome can be useful 
 in general for many different projects, the sample data is specific to 
-our own project, therefore we download them in 
-*$BIOINFO_ROOT/prj/microbe-genome-analysis/local/data/samples/A.fastq*.
+our own project, therefore we download it in 
+*local/data/samples/A.fastq*. In general, We may use wget or curl to 
+download remote files, or simply put them in local/data if we have a 
+local copy of the files.
 
-To create the project, we run `X-mkprj microbe-genome-analysis`; now we 
-have a directory structure and a conda environment, so we enter the 
-project directory with `cd $BIOINFO_ROOT/prj/microbe-genome-analysis`. 
-We are faced with two directories, dataset and local, and we enter 
-dataset, where we find a Snakefile.
-
-The snakefile is actually a symbolic link to a file in 
-local/snakefiles/. Indeed, we separate scripts and configuration files 
-(which are in local) from results (which are in dataset).
+**Writing the workflow** The snakefile is actually a symbolic link to a 
+file in local/snakefiles. Indeed, we separate scripts and configuration 
+files (which are in local) from results (which are in dataset).
 
 Following the [snakemake 
 tutorial](https://snakemake.readthedocs.io/en/stable/tutorial/basics.html), 
@@ -214,18 +253,23 @@ rule bwa_map:
         "bwa mem {input} | samtools view -Sb - > {output}"
 ```
 
-However, we still don't have the bwa and samtools programs, so we need 
-to download them. The first thing to do is a search in anaconda cloud to 
-see whether bwa is packaged; it turns out that it is and we can install 
-it with `conda install -c bioconda bwa`.
+**Getting software -- conda** At this stage we still don't have the bwa 
+and samtools programs, so we need to download them. The first thing to 
+do is a search in anaconda repositories to see whether bwa is packaged; 
+it turns out that it is and we can install it with `conda install -c 
+bioconda bwa`. A very useful site is [anaconda 
+cloud](https://anaconda.org), which not only lets you search anaconda 
+packages, it also tells you which command to run if you want to install 
+it (check for instance the [samtools 
+page](https://anaconda.org/bioconda/samtools)).
 
-Similarly, samtools is packaged in anaconda repositories, so we could 
-install it as easily as `conda install -c bioconda samtools`; 
-nevertheless, for the sake of this example, let us install it manually. 
-We browse the web and find the samtools page at 
-http://www.htslib.org/download/; we want to download the source code in 
-the project's local/src, then install samtools under local/builds, and 
-finally copy the binary files in local/bin. We run:
+**Getting software -- manual compilation** Similarly, samtools is 
+packaged in anaconda repositories, so we could install it as easily as 
+`conda install -c bioconda samtools`; nevertheless, for the sake of this 
+example, let us install it manually. We browse the web and find the 
+samtools page at http://www.htslib.org/download/; we want to download 
+the source code in the project's local/src, then install samtools under 
+local/builds, and finally copy the binary files in local/bin. We run:
 
 ```
 cd $BIOINFO_ROOT/prj/microbe-genome-analysis/local/src
@@ -233,7 +277,7 @@ wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar
 tar -xf samtools-1.9.tar.bz2
 ```
 
-Then, following the instruction at the download page, we run
+Then, following the instructions at the download page, we run
 
 ```
 cd samtools-1.9
@@ -261,10 +305,15 @@ executables will be in one place. The project's local/bin directory is
 already in our PATH, therefore we just run
 
 ```
-ln -s local/builds/bin/* local/bin/
+ln -s local/builds/bin/\* local/bin/
 ```
 
-Now we are ready to run our first snakemake rule, so we come back to the 
+To recap, the steps of manual compilation are: download the source code 
+in local/src/program\_name, configure it with the option --prefix 
+local/builds/program\_name, build it by running `make` and `make 
+install`, and finally symlink the executables to local/bin.
+
+We are now ready to run our first snakemake rule, so we come back to the 
 dataset directory and run
 
 ```
@@ -279,31 +328,38 @@ re-running all the workflow. Remember that if you will export this
 project to another machine, manually installed modules like samtools 
 will have to be rebuilt! This is why using conda is so much better.
 
-Now suppose we find an excel with microbe data, which we download under 
-local/data/extra, and we want to parse it to enrich our analysis. We 
-like the perl module Spreadsheet::ParseExcel, therefore we install it. 
-Its place will be local/lib/perl5, since it is not executed directly but 
-it is called from other perl scripts. Again, first we search anaconda 
-cloud for a packaged version; luckily we find it, so we can run `conda 
-install -c biobuilds perl-spreadsheet-parseexcel`. However, for the sake 
-of this example, we will not do it; instead, we are going to install it 
-manually. For perl modules, there are actually three options: (a) the 
-first is to download the source code under 
-local/src/Spreadsheet-ParseExcel and then compile it with `perl 
-Makefile.PL INSTALL_BASE=local/lib/perl5`; (b) alternatively, we could 
-use `cpan install Spreadsheet-ParseExcel`; (c) the best option, however, 
-is to use cpanm.
+**Getting software -- installing libraries** Now suppose we find an 
+excel with microbe data, which we download under local/data/extra, and 
+we want to parse it to enrich our analysis. We shall provide first an 
+example of how to download a Perl module, Spreadsheet::ParseExcel. Its 
+location should be under local/lib/perl5 (recall that by library we mean 
+a program which is not executed directly but it is called from other 
+perl scripts). Again, first we search anaconda cloud for a packaged 
+version; luckily we find it, so we can run `conda install -c biobuilds 
+perl-spreadsheet-parseexcel`. However, for the sake of this example, we 
+will not do it; instead, we are going to install it manually. For perl 
+modules, there are actually three options: (a) the first is to download 
+the source code under local/src/Spreadsheet-ParseExcel and then compile 
+it with `perl Makefile.PL INSTALL_BASE=local/lib/perl5`; (b) 
+alternatively, we could use `cpan install Spreadsheet-ParseExcel`; (c) 
+the best option, however, is to use cpanm.
 
 Method (a) is annoying because if the module has many dependencies we 
 have to manually install each of them. CPAN (method (b)) is more 
 convenient, but it has to be configured for each user individually, 
-which is really bad in bioinfoconda. The third option, CPANM, is the 
-recommended one: it is as powerful as CPAN, but there is virtually no 
-configuration to make; moreover, bioinfoconda supports it and makes sure 
-that when you run `cpanm module` from inside the project directory, the 
-module is built under /local/builds/cpanm and installed in 
-local/lib/perl5. CPANM can be installed either system-wide or locally 
-through conda.
+which is somehow unpleasant. The third option, CPANM, is the recommended 
+one: it is as powerful as CPAN, but there is virtually no configuration 
+to make; moreover, bioinfoconda supports it and makes sure that when you 
+run `cpanm module` from inside the project directory, the module source 
+is downloaded under local/src, built under local/builds/cpanm and 
+installed under local/lib/perl5.
+
+From the above discussion we can extract a general recommendation: when 
+installing the interpreter of a programming language such as Perl, we 
+should install the associated package manager as well. In this case, 
+since we use Perl, we install perl and cpanminus. For instance, if we 
+program in Node.js we would install node and npm. Of course when we say 
+install we actually mean `conda install`.
 
 For python modules, it suffices to run `pip install modulename`; they 
 are handled by conda itself. For R modules (after making sure that the 
@@ -317,39 +373,52 @@ biocLite(c("pkgname1", "pkgname2"))
 ```
 
 This should cover most common cases; if you cannot install your module 
-in any of those ways, probably you had better write your own module :) 
+in any of those ways, probably you had better write your own library :) 
 
-If you use other languages and/or know a way to improve these 
-instructions feel free to contribute to bioinfoconda.
+**Getting software -- writing it** Now that we have our module, we can 
+start writing our own script to parse the excel file. We start editing 
+the file local/src/parse\_microbe\_samples.pl:
 
-Now that we have our module, we can start writing our own script to 
-parse the excel file. 
+```
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Spreadsheet::ParseExcel;
+
+...
+```
+
+Note first that we used a special shebang and secondly that we do not 
+need to specify the local lib directory where we downloaded the 
+Spreadsheet module: bioinfoconda takes care of that. Indeed, thanks to 
+direnv, when we work at this project the environment variable PERL5LIB 
+is set to local/lib/perl5. (for other programming language it works 
+similarly.) When we are done we should make sure that this script is in 
+the PATH environment variable, so we simply link it under 
+local/bin/parse_microbe_sample.
+
+We now come back to the dataset directory and write a second snakerule:
+
+```
+rule parse_excel:
+    input:
+        "$BIOINFO_ROOT/prj/microbe-genome-analysis/local/data/extra/microbe_data.xls"
+    output:
+        "microbe_data/summary.txt"
+    shell:
+        "parse_microbe_samples {input} > {output}
+```
+
+Note also that we don't need to specify the path to our perl script 
+since it is under local/bin and local/bin is in the PATH environment 
+variable.
+
+**Running the workflow** TODO
+
+#### Extra: R Studio integration
 
 TODO
-
-TODO: R Studio integration
-
-### Downloading Data
-
-In Bioinfoconda, third-party data sets which will be used in potentially 
-many different projects are stored in a separate place, the 
-*$BIOINFO\_ROOT/data* directory. To make the downloading of the data 
-easier, we created the `X-getdata` command, whose syntax is
-
-```
-X-getdata URL
-```
-
-It supports both http and ftp protocols and is able to download a 
-directory recursively, as well as to download only those files which 
-match a pattern. Third-party data sets are usually well documented and 
-structured, therefore it makes sense to maintain their original 
-structure when downloading them; `X-getdata` automatically suggests a 
-possible location where to save the downloads: for instance, if the URL 
-is http://foo.com/boo/bar/baz.vcf.gz, the suggestion will be 
-foo/boo/bar/baz.vcf.gz. If you are not satisfied with the suggestion, 
-you can manually override it. Files are downloaded inside the 
-*$BIOINFO\_ROOT/data* directory.
 
 ### Using Docker
 
@@ -364,6 +433,8 @@ TODO.
 * Make the names coherent (bioinfo vs bioinfoconda...)
 
 * Improve docker management
+
+* Keep an index of the data
 
 * Config file with default conda packages and default directories
 
