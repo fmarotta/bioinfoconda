@@ -1,3 +1,11 @@
+function cd
+{
+        builtin cd "$@"
+        if [[ $PWD == "$BIOINFO_ROOT/prj/"* ]]; then
+                pushd . >> /dev/null
+        fi
+}
+
 function cdp
 {
         prj_root=${BIOINFO_ROOT}/prj
@@ -5,10 +13,15 @@ function cdp
         if [ "$#" == "0" ]; then
                 cd $prj_root
         elif [ "$#" == "1" ]; then
-                cd $prj_root/$1
+                if [ "$1" == "-" ]; then
+                        popd >> /dev/null
+                        echo $PWD
+                else
+                        cd $prj_root/$1
+                fi
         else
                 echo "ERROR: Too many arguments."
-                echo "Usage: cd [prjname]"
+                echo "Usage: cdp [prjname]"
                 return 1
         fi
 
