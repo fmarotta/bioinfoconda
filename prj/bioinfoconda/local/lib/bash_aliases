@@ -1,0 +1,16 @@
+function cdp
+{
+        prj_root=${BIOINFO_ROOT}/prj
+
+        if [ "$#" == "0" ]; then
+                cd $prj_root
+        elif [ "$#" == "1" ]; then
+                cd $prj_root/$1
+        else
+                echo "ERROR: Too many arguments."
+                echo "Usage: cd [prjname]"
+                return 1
+        fi
+
+        return 0
+}
