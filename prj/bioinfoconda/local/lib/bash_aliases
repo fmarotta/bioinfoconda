@@ -1,3 +1,30 @@
+# There are many options: 1) we simply save the last project directory, 
+# but we need to parse both the PWD and the parameters (and parsing the 
+# parameters of the builtin cd function must be difficult); 2) we use 
+# the builtin dirstack array, like we do now, but the problem is how to 
+# clean it? 3) We make our own array and put whatever we want in it.
+
+# TODO: an array bioinfo_dirstack so that we do not tamper with the 
+# builtin dirstack.
+
+function current_prj
+{
+        if [[ $PWD != "${BIOINFO_ROOT}/prj/"* ]]; then
+                echo "Error: not inside a project."
+                return 1
+        fi
+
+        echo "$PWD" | cut -d '/' -f 4
+}
+
+function cd
+{
+        builtin cd "$@"
+        if [[ $PWD == "${BIOINFO_ROOT}/prj"* ]]; then
+                pushd . >> /dev/null
+        fi
+}
+
 function cdp
 {
         prj_root=${BIOINFO_ROOT}/prj
@@ -5,12 +32,31 @@ function cdp
         if [ "$#" == "0" ]; then
                 cd $prj_root
         elif [ "$#" == "1" ]; then
-                cd $prj_root/$1
+                if [ "$1" == "-" ]; then
+                        status=0
+                        for d in `dirs`; do
+                                if [ "$d" == "$PWD" ]; then
+                                        continue
+                                fi
+                                if [[ $d != "$prj_root/`current_prj`"* ]]; then
+                                        cd $d
+                                        echo $PWD
+                                        status=1
+                                        break
+                                fi
+                        done
+                        if ! ((status)); then
+                                echo "No old project directory."
+                        fi
+                else
+                        cd $prj_root/$1
+                fi
         else
                 echo "ERROR: Too many arguments."
-                echo "Usage: cd [prjname]"
+                echo "Usage: cdp [prjname]"
                 return 1
         fi
 
         return 0
 }
+
