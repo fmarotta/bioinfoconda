@@ -7,6 +7,9 @@
 # TODO: an array bioinfo_dirstack so that we do not tamper with the 
 # builtin dirstack.
 
+# TODO: if one exits a project, the stack is cleaned and only the last 
+# project is left. Otherwise one could do cdp - three times.
+
 function current_prj
 {
         if [[ $PWD != "${BIOINFO_ROOT}/prj/"* ]]; then
@@ -35,7 +38,7 @@ function cdp
                 if [ "$1" == "-" ]; then
                         status=0
                         for d in `dirs`; do
-                                if [ "$d" == "$PWD" ]; then
+                                if [ "$d" == "$PWD" ] || [ "$d" == "~" ]; then
                                         continue
                                 fi
                                 if [[ $d != "$prj_root/`current_prj`"* ]]; then
