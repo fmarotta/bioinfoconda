@@ -1,33 +1,84 @@
-# There are many options: 1) we simply save the last project directory, 
-# but we need to parse both the PWD and the parameters (and parsing the 
-# parameters of the builtin cd function must be difficult); 2) we use 
-# the builtin dirstack array, like we do now, but the problem is how to 
-# clean it? 3) We make our own array and put whatever we want in it.
+export BIOINFOCONDA_OLDPWD="${BIOINFO_ROOT}/prj"
 
-# TODO: an array bioinfo_dirstack so that we do not tamper with the 
-# builtin dirstack.
-
-# TODO: if one exits a project, the stack is cleaned and only the last 
-# project is left. Otherwise one could do cdp - three times.
-
-function current_prj
+# Input: an absolute path
+# Output: the project contained in that path, if any
+function extract_prj
 {
-        if [[ $PWD != "${BIOINFO_ROOT}/prj/"* ]]; then
-                echo "Error: not inside a project."
+        if [[ $1 != "${BIOINFO_ROOT}/prj"* ]]; then
                 return 1
         fi
 
-        echo "$PWD" | cut -d '/' -f 4
+        if [ "$1" == "$BIOINFO_ROOT/prj" ]; then
+                echo $BIOINFO_ROOT/prj
+        else
+                echo $1 | cut -d '/' -f 4
+        fi
+
+        return 0
 }
 
+# Input: a relative path
+# Output: the absolute path
+function absolutise
+{
+        if [[ $1 == "/"* ]]; then
+                echo $1
+                return 0
+        fi
+
+        abs_path=$PWD
+        rel_path=`echo $1 | sed 's#^./##'`
+
+        for d in `echo $rel_path | cut -d '/' -f 1- --output-delimiter=' '`; do
+                if [ "$d" == ".." ]; then
+                        abs_path=`dirname $abs_path`
+                else
+                        abs_path=$abs_path"/"$d
+                fi
+        done
+
+        echo $abs_path
+        return 0
+}
+
+# Updates BIOINFOCONDA_OLWPWD
 function cd
 {
-        builtin cd "$@"
-        if [[ $PWD == "${BIOINFO_ROOT}/prj"* ]]; then
-                pushd . >> /dev/null
+        # Find current project, if any
+        cur_prj=""
+        if extract_prj $PWD > /dev/null; then
+                cur_prj=`extract_prj $PWD`
         fi
+
+        # Find new project (exclude cd options), if any
+        new_prj=""
+        for p in $*; do
+                if [[ $p != "-"* ]] && extract_prj $(absolutise $p) > /dev/null; then
+                        dest=$p
+                        new_prj=`extract_prj $(absolutise $dest)`
+                fi
+        done
+
+        # If we are entering another project...
+        if [ "$new_prj" != "" ]; then
+                # ...From another project
+                if [ "$cur_prj" != "" ] && [ $cur_prj != $new_prj ]; then
+                        BIOINFOCONDA_OLDPWD=$PWD
+                fi
+        # Elif we come out to the outside world...
+        elif [ "$new_prj" == "" ]; then
+                # ...From a project
+                if [ "$cur_prj" != "" ]; then
+                        BIOINFOCONDA_OLDPWD=$PWD
+                fi
+        fi
+
+        builtin cd "$@"
+        return $?
 }
 
+# Note that in cdp we use the cd function we defined above, therefore we 
+# need not worry about updating BIOINFOCONDA_OLDPWD
 function cdp
 {
         prj_root=${BIOINFO_ROOT}/prj
@@ -35,22 +86,8 @@ function cdp
         if [ "$#" == "0" ]; then
                 cd $prj_root
         elif [ "$#" == "1" ]; then
-                if [ "$1" == "-" ]; then
-                        status=0
-                        for d in `dirs`; do
-                                if [ "$d" == "$PWD" ] || [ "$d" == "~" ]; then
-                                        continue
-                                fi
-                                if [[ $d != "$prj_root/`current_prj`"* ]]; then
-                                        cd $d
-                                        echo $PWD
-                                        status=1
-                                        break
-                                fi
-                        done
-                        if ! ((status)); then
-                                echo "No old project directory."
-                        fi
+                if [ $1 == "-" ]; then
+                        cd $BIOINFOCONDA_OLDPWD
                 else
                         cd $prj_root/$1
                 fi
@@ -60,6 +97,6 @@ function cdp
                 return 1
         fi
 
-        return 0
+        return $?
 }
 
