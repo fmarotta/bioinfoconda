@@ -2,12 +2,6 @@
 
 # TODO: edit project name
 
-# TODO: append library paths, don't overwrite them (I don't know if this 
-# is actually done or not...)
-
-# DONE: /bioinfo/miniconda3/envs/demo/lib/R/library add miniconda R
-# library to .Rprofile, so that it is imported in Rstudio projects
-
 options=hTGCir
 longoptions=help,no-templates,no-git,no-conda,interactive-conda,remove
 
@@ -192,7 +186,9 @@ function create_default_conda()
 	prjpath=$1
 	prjname=$(basename $prjpath)
 
-	conda create -y --name $prjname -c r -c conda-forge -c bioconda r perl snakemake \
+        conda create -y --name $prjname -c r -c conda-forge -c bioconda r perl perl-app-cpanminus snakemake \
+        && conda config --file $minicondapath/envs/$prjname/.condarc \
+                --add channels r --add channels conda-forge --add channels bioconda \
         && conda env export -n $prjname -f $prjpath/local/ymlfiles/$prjname.yml \
 	|| return $?
 
