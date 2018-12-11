@@ -306,7 +306,12 @@ sub wget_simple
                         # extract the information to be logged
                         if ($line =~ m/ saved \[\d+\]$/)
                         {
-                                my @output = ($line =~ m/(.*) (.*) \(.*\) - '(.*)' saved \[\d+\]$/);
+                                # We want @output to contain: date, 
+                                # hour, url, path. But wget simple 
+                                # returns only date, hour, path, so we 
+                                # add the url.
+                                @output = ($line =~ m/(.*) (.*) \(.*\) - '(.*)' saved \[\d+\]$/);
+                                splice(@output, 2, 0, $url);
                         }
                 }
         }
@@ -372,6 +377,9 @@ sub update_index
 
         for (my $i = 0; $i < scalar(@log); $i += 4)
         {
+                # @log contains, for each file, date, hour, url, path. 
+                # Logs for different files are stored sequentially, in a 
+                # flat way.
                 print INDEXFILE "$log[$i] $log[$i+1]\t$ENV{USER}\t$log[$i+2]\t$log[$i+3]\n";
         }
 }
