@@ -100,3 +100,5 @@ function cdp
         return $?
 }
 
+# Completion
+source /bioinfo/prj/bioinfoconda/local/lib/bash_completion
