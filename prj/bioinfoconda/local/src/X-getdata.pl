@@ -424,7 +424,7 @@ sub is_pseudo
 {
         my $dir = $_[0];
         my @pseudodirs = ("pub", ".*?download.*?", "tmp", "files", 
-                "goldenPath");
+                "goldenPath", "ftp", "databases");
 
         for (my $i = 0; $i < scalar(@pseudodirs); $i++)
         {
