@@ -1,6 +1,7 @@
+bioinfoconda/data/data_index
+bioinfoconda/local/config/gitlab
 miniconda3/*
 prj/*
-!prj/bioinfoconda
 data/*
 !data/.gitignore
 docker/*
