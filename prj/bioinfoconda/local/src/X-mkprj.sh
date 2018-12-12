@@ -1,16 +1,21 @@
 #!/bin/bash
 
+# TODO: save templates as files and default environment as yml.
+
+# TODO: add documentation for gitlab repository
+
 # TODO: edit project name
 
-options=hTGCir
-longoptions=help,no-templates,no-git,no-conda,interactive-conda,remove
+options=hTGlCir
+longoptions=help,no-templates,no-git,gitlab,no-conda,interactive-conda,remove
 
 read -r -d '' usage << END
 Usage: `basename $0` [options] prjname
 
 Options:
 	-T|--no-templates       do not create template Snakefile and Dockerfile.
-        -G|--no-git             do not initialise git repository.
+        -G|--no-git             do not initialise local git repository.
+        -l|--gitlab             create remote gitlab repository.
         -C|--no-conda           do not create the conda environment.
         -i|--interactive-conda  enable the creation of a customised conda
                                 environment.
@@ -21,14 +26,14 @@ Notes:
         This program does the following things:
 	1) Creating a directory structure for the project.
 	2) Adding default Dockerfile and Snakefile.
-	3) Initialising a git repository.
-	4) Creating a conda environment.
+        3) Initialising a git repository.
+        4) Creating a conda environment.
         5) Setting up direnv for project environment and libraries.
 
         With the \`-i' option, you will be prompted to choose the channels
 	and packages that will be added initially to the conda environment;
-	otherwise the environment will contain R, perl and snakemake. Use
-	this option only if you know what you are doing.
+        otherwise the environment will contain R, perl, cpanm and snakemake.
+        Use this option only if you know what you are doing.
 
 Reporting bugs:
 	federicomarotta AT mail DOT com
@@ -40,7 +45,7 @@ function clean_prj()
 	prjpath=$1
 	prjname=$(basename $prjpath)
 
-	if conda info --envs | grep -w $prjname; then
+        if conda info --envs | grep "^$prjname[[:space:]]" > /dev/null; then
                 conda env remove -y -n $prjname
 	fi
 	if [ -d $prjpath ]; then
@@ -168,7 +173,7 @@ function create_templates()
         ln -s $prjpath/local/snakefiles/Snakefile $prjpath/dataset/Snakefile \
         || return $?
         ln -s $prjpath/local/dockerfiles/Dockerfile $prjpath/Dockerfile \
-        || retrun $?
+        || return $?
 
 	return 0
 }
@@ -179,7 +184,61 @@ function initialise_repo()
 	git init --shared=group $prjpath > /dev/null || return $?
 	echo dataset/* > $prjpath/.gitignore
 
-	return 0
+        return 0
+}
+function initialise_gitlab_repo()
+{
+        prjpath=$1
+        prjname=$(basename $prjpath)
+        config_file="$BIOINFO_ROOT/prj/bioinfoconda/local/config/gitlab"
+        gitlab_username=$( awk '(NR == 2) {print $1}' $config_file )
+        gitlab_group_id=$( awk '(NR == 2) {print $2}' $config_file )
+        gitlab_token=$( awk '(NR == 2) {print $3}' $config_file )
+
+        # Check for invalid configuration
+        if [ -z "$gitlab_username" ] || [ -z "$gitlab_group_id" ] || [ -z "$gitlab_token" ]; then
+                echo "Invalid configuration. This feature requires you to provide some configuration parameters; check the documentation for help."
+                return 4
+        fi
+
+        # Create repository
+        response=$( curl -s --header "Private-Token: $gitlab_token" \
+                -X POST "https://gitlab.com/api/v4/projects" \
+                -d "name=$prjname" | jq -r ".message" )
+
+        if [ "$?" != "0" ]; then
+                echo "curl had some problems to send your request."
+                return $?
+        fi
+        if [ "$response" != "null" ]; then
+                echo "The GitLab API complained about your request:"
+                echo $response
+                return 8
+        fi
+
+        # Share the project with the group
+        response=$( curl -s --header "Private-Token: $gitlab_token" \
+                -X POST "https://gitlab.com/api/v4/projects/$gitlab_username%2F$prjname/share" \
+                -d "group_id=$gitlab_group_id" \
+                -d "group_access=40" | jq -r ".message" )
+
+        if [ "$?" != "0" ]; then
+                echo "curl had some problems to send your request."
+                return $?
+        fi
+        if [ "$response" != "null" ]; then
+                echo "The GitLab API complained about your request:"
+                echo $response
+                return 8
+        fi
+
+        # Add the remote origins
+        cd $prjpath
+        git remote add origin "https://gitlab.com/$gitlab_username/$prjname.git"
+        git remote add ssh-origin "git@gitlab.com/$gitlab_username/$prjname.git"
+        cd $OLDPWD
+
+        return 0
 }
 function create_default_conda()
 {
@@ -187,8 +246,7 @@ function create_default_conda()
 	prjname=$(basename $prjpath)
 
         conda create -y --name $prjname -c r -c conda-forge -c bioconda r perl perl-app-cpanminus snakemake \
-        && conda config --file $minicondapath/envs/$prjname/.condarc \
-                --add channels r --add channels conda-forge --add channels bioconda \
+        && conda config --file $minicondapath/envs/$prjname/.condarc --add channels r --add channels conda-forge --add channels bioconda \
         && conda env export -n $prjname -f $prjpath/local/ymlfiles/$prjname.yml \
 	|| return $?
 
@@ -242,6 +300,7 @@ eval set -- "$PARSER"
 # parse the options
 templates=1
 git=1
+gitlab=0
 conda=1
 interactive=0
 remove=0
@@ -257,6 +316,10 @@ while true; do
 			;;
                 -G|--no-git )
 			git=0
+			shift
+			;;
+                -l|--gitlab )
+                        gitlab=1
 			shift
 			;;
 		-C|--no-conda )
@@ -283,9 +346,12 @@ done
 
 # validate the options
 if ((remove)); then
-        if [[ $templates == 0 || $conda == 0 || $git == 0 || $interactive == 1 ]]; then
+        if [[ $templates == 0 || $conda == 0 || $git == 0 || $gitlab == 1 || $interactive == 1 ]]; then
                 error "-r is not compatible with any other option." 5
         fi
+fi
+if ! ((git)) && (($gitlab)); then
+        error "-G is not compatible with -l." 5
 fi
 
 # validate the environment
@@ -366,11 +432,19 @@ fi
 
 # initialise a git repository
 if ((git)); then
-	info "Initialising git repository..."
+        info "Initialising local git repository..."
 	if ! initialise_repo $prjpath; then
 		clean_prj $prjpath
 		error "Could not initialise git repository." 9
 	fi
+fi
+
+# create remote gitlab repository
+if ((gitlab)); then
+        info "Creating remote repository on GitLab..."
+        if ! initialise_gitlab_repo $prjpath; then
+                warn "Could not create remote repository."
+        fi
 fi
 
 # create a conda environment
