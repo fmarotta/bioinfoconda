@@ -2,7 +2,9 @@
 
 use warnings;
 use strict;
+use Digest::SHA;
 use File::Basename;
+use File::Find;
 use File::Path qw(make_path remove_tree);
 use Getopt::Long;
 
@@ -10,12 +12,15 @@ use Getopt::Long;
 
 # TODO: accept patterns for http too.
 
+# TODO: check if new dest is overriding something
+
 my $NAME = basename($0);
 my $USAGE =<<USAGE;
 Usage: $NAME [options] URL
 
 Options:
         -R|--reject=pattern     Reject files matching pattern. (Not yet implemented)
+        -f|--fix-index          Attempt to interactively fix the data index
 	-h|--help       	Print this message.
 
 Notes:
@@ -34,32 +39,15 @@ Notes:
         if it does not exist, then it is created. When the protocol is not
         specified, it is supposed to be http.
 
+        Each time a file is downloaded, an entry to the index is 
+        appended so that the user who downloaded the file, the time of the 
+        download, the url and the local path are logged. If some files are moved
+        or downloaded manually, the index might become unrepresentative, therefore
+        it has to be fixed manually.
+
 Reporting bugs:
 	federicomarotta AT mail DOT com
 USAGE
-
-# Parse command line options
-my $help = 0;
-my $reject = '';
-GetOptions(
-        "reject|R=s" => \$reject,
-        "help|h" => \$help
-);
-
-# Print help message
-if ($help)
-{
-        print $USAGE;
-        exit 0;
-}
-
-# Parse arguments
-if (scalar(@ARGV) != 1)
-{
-        print $USAGE;
-        exit 1;
-}
-my $url = $ARGV[0];
 
 # Validate environment
 if (defined $ENV{"BIOINFO_ROOT"} && length($ENV))
@@ -72,6 +60,46 @@ if (! -d "$ENV{'BIOINFO_ROOT'}/data")
 }
 my $data_root = "$ENV{'BIOINFO_ROOT'}/data/";
 my $index_file = "$ENV{'BIOINFO_ROOT'}/prj/bioinfoconda/data/data_index";
+
+# Parse command line options
+my $help = 0;
+my $reject = '';
+my $fix_index = 0;
+GetOptions(
+        "reject|R=s" => \$reject,
+        "fix-index|f" => \$fix_index,
+        "help|h" => \$help
+);
+
+# Print help message
+if ($help)
+{
+        print $USAGE;
+        exit 0;
+}
+
+# Fix index
+if ($fix_index)
+{
+        if (! index_diverged($index_file))
+        {
+                print "The index is OK.\n";
+                exit 0;
+        }
+
+        edit_index($index_file);
+
+        exit 0;
+}
+
+# By default, download
+# Parse arguments
+if (scalar(@ARGV) != 1)
+{
+        print $USAGE;
+        exit 1;
+}
+my $url = $ARGV[0];
 
 # Parse the URL
 my ($protocol, $domain, $port, $path, @params) = parse_url($url);
@@ -97,8 +125,11 @@ else
 # Add an entry to the index file
 if (@output)
 {
+        print "Updating index...\n";
         update_index(\@output);
 }
+
+exit 0;
 
 # Subroutines
 
@@ -371,6 +402,7 @@ sub wget_recursive
 sub update_index
 {
         my @log = @{$_[0]};
+        my $sha = Digest::SHA->new(256);
 
         open(INDEXFILE, ">>", $index_file)
                 or die "ERROR: cannot open $index_file.";
@@ -380,8 +412,81 @@ sub update_index
                 # @log contains, for each file, date, hour, url, path. 
                 # Logs for different files are stored sequentially, in a 
                 # flat way.
-                print INDEXFILE "$log[$i] $log[$i+1]\t$ENV{USER}\t$log[$i+2]\t$log[$i+3]\n";
+
+                # Compute SHA for each downloaded file
+                $sha->addfile($log[$i+3]);
+                my $digest = $sha->hexdigest;
+
+                # Append line to the index
+                print INDEXFILE "$log[$i] $log[$i+1]\t$ENV{USER}\t$log[$i+2]\t$log[$i+3]\t$digest\n";
         }
+}
+
+sub index_diverged
+{
+        my $index_file = $_[0];
+        my $sha = Digest::SHA->new(256);
+
+	# Actual files under $data_root
+        my %tree;
+	find(sub {
+    		return unless -f;       # Must be a file
+		return if /^\./;	# Must not be hidden
+
+                $sha->addfile($File::Find::name);
+                my $digest = $sha->hexdigest;
+
+                $tree{$digest} = $File::Find::name;
+	}, $data_root);
+
+        # Files in the index
+        my %index;
+        open(INDEXFILE, "<", $index_file)
+        	or die "ERROR: cannot open $index_file.";
+	while (<INDEXFILE>)
+        {
+                chomp;
+                $index{$_[$4]} = $_[$3];
+        }
+
+        # Find sha's in common and check if they have the same path
+        foreach my $sha (keys(%tree))
+        {
+                if (! exists $index{$sha})
+                {
+                        print "add $tree{$sha} to the index\n";
+                }
+                elsif ($tree{$sha} != $index{$sha})
+                {
+                        # ask to rename the files in the index
+                        print "rename $index{$sha} to $tree{$sha}\n";
+                }
+        }
+
+        # Find sha's only in the index
+        foreach my $sha (keys(%index))
+        {
+                if (! exists($tree{$sha}))
+                {
+                        # ask to delete the files from the index
+                        print "delete $index{$sha} from the index\n";
+                }
+        }
+
+        # Now check if the files with the same path have actually the 
+        # same sha
+        %tree = reverse(%tree);
+        %index = reverse(%index);
+        foreach $path (keys(%tree))
+        {
+                if ($tree{$path} != $index{$path})
+                {
+                        # we have a problem: corrupted file
+                        print "The file $tree{$path} is corrupted\n";
+                }
+        }
+	
+        return 0;
 }
 
 sub is_valid_dest
