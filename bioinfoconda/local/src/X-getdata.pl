@@ -2,10 +2,13 @@
 
 use warnings;
 use strict;
-use Digest::SHA;
+#use Digest::SHA;
+use Digest::MD5;
 use File::Basename;
+use File::Copy;
 use File::Find;
-use File::Path qw(make_path remove_tree);
+use File::Path qw(make_path);
+use Fcntl qw(:flock SEEK_END);
 use Getopt::Long;
 
 # TODO: implement -R option.
@@ -59,7 +62,7 @@ if (! -d "$ENV{'BIOINFO_ROOT'}/data")
         die("ERROR: $ENV{'BIOINFO_ROOT'}/data does not exists.\n")
 }
 my $data_root = "$ENV{'BIOINFO_ROOT'}/data/";
-my $index_file = "$ENV{'BIOINFO_ROOT'}/prj/bioinfoconda/data/data_index";
+my $index_file = "$ENV{'BIOINFO_ROOT'}/bioinfoconda/local/var/data_index";
 
 # Parse command line options
 my $help = 0;
@@ -81,13 +84,22 @@ if ($help)
 # Fix index
 if ($fix_index)
 {
-        if (! index_diverged($index_file))
+        # Check syntax
+        if (scalar(@ARGV) != 0)
         {
-                print "The index is OK.\n";
-                exit 0;
+                print "You cannot specify an URL when fixing the index.\n";
+                print $USAGE;
+                exit 1;
+        }
+        if ($reject ne '')
+        {
+                print "-f is not compatible with -R.\n";
+                print $USAGE;
+                exit 1;
         }
 
-        edit_index($index_file);
+        # Try to fix the index
+        fix_index($index_file);
 
         exit 0;
 }
@@ -402,7 +414,8 @@ sub wget_recursive
 sub update_index
 {
         my @log = @{$_[0]};
-        my $sha = Digest::SHA->new(256);
+        #my $ctx = Digest::SHA->new(1);
+        my $ctx = Digest::MD5->new;
 
         open(INDEXFILE, ">>", $index_file)
                 or die "ERROR: cannot open $index_file.";
@@ -413,80 +426,122 @@ sub update_index
                 # Logs for different files are stored sequentially, in a 
                 # flat way.
 
-                # Compute SHA for each downloaded file
-                $sha->addfile($log[$i+3]);
-                my $digest = $sha->hexdigest;
+                # Compute checksum for each downloaded file
+                my $digest = checksum($ctx, $log[$i+3]);
 
                 # Append line to the index
                 print INDEXFILE "$log[$i] $log[$i+1]\t$ENV{USER}\t$log[$i+2]\t$log[$i+3]\t$digest\n";
         }
+
+        close(INDEXFILE);
 }
 
-sub index_diverged
+sub fix_index
 {
         my $index_file = $_[0];
-        my $sha = Digest::SHA->new(256);
+        #my $ctx = Digest::SHA->new(1);
+        my $ctx = Digest::MD5->new;
+
+        # Backup the previous index
+        copy($index_file, $index_file.".old") or die "Failed to backup index file: $!";
 
 	# Actual files under $data_root
         my %tree;
+        my %tree_bypath;
 	find(sub {
-    		return unless -f;       # Must be a file
-		return if /^\./;	# Must not be hidden
+                return unless -f;       # Must be a file
+                return if /^\./;	# Must not be hidden
 
-                $sha->addfile($File::Find::name);
-                my $digest = $sha->hexdigest;
+                my $date = substr(`stat -c '%y' $File::Find::name`, 0, 19);
+                my $user = (getpwuid((stat $File::Find::name)[4]))[0];
+                my $digest = checksum($ctx, $File::Find::name);
 
-                $tree{$digest} = $File::Find::name;
+                $tree{$digest} = [$date, $user, $File::Find::name, $File::Find::name];
+                $tree_bypath{$File::Find::name} = [$date, $user, $File::Find::name, $digest];
+
 	}, $data_root);
 
         # Files in the index
         my %index;
-        open(INDEXFILE, "<", $index_file)
-        	or die "ERROR: cannot open $index_file.";
+        my %index_bypath;
+        open(INDEXFILE, "+<", $index_file) or die "ERROR: cannot open $index_file: $!";
+        flock(INDEXFILE, LOCK_EX) or die "Cannot lock $index_file: $!";
 	while (<INDEXFILE>)
         {
                 chomp;
-                $index{$_[$4]} = $_[$3];
+                @_ = split /\t/;
+                $index{$_[4]} = [$_[0], $_[1], $_[2], $_[3]];
+                $index_bypath{$_[3]} = [$_[0], $_[1], $_[2], $_[4]];
         }
 
-        # Find sha's in common and check if they have the same path
-        foreach my $sha (keys(%tree))
+        # Find checksums in common and check if they have the same path
+        foreach my $checksum (keys(%tree))
         {
-                if (! exists $index{$sha})
+                if (! exists $index{$checksum})
                 {
-                        print "add $tree{$sha} to the index\n";
+                        # We have to add this file to the index
+                        $index{$checksum} = $tree{$checksum};
                 }
-                elsif ($tree{$sha} != $index{$sha})
+                elsif ($tree{$checksum}[3] ne $index{$checksum}[3])
                 {
-                        # ask to rename the files in the index
-                        print "rename $index{$sha} to $tree{$sha}\n";
+                        # We have to rename this file in the index
+                        $index{$checksum}[3] = $tree{$checksum}[3];
+                        $index{$checksum}[0] = $tree{$checksum}[0];
                 }
         }
 
-        # Find sha's only in the index
-        foreach my $sha (keys(%index))
+        # Find checksums only in the index
+        foreach my $checksum (keys(%index))
         {
-                if (! exists($tree{$sha}))
+                if (! exists($tree{$checksum}))
                 {
-                        # ask to delete the files from the index
-                        print "delete $index{$sha} from the index\n";
+                        # We have to delete the files from the index
+                        delete($index{$checksum});
                 }
         }
 
         # Now check if the files with the same path have actually the 
-        # same sha
-        %tree = reverse(%tree);
-        %index = reverse(%index);
-        foreach $path (keys(%tree))
+        # same checksum
+        foreach $path (keys(%tree_bypath))
         {
-                if ($tree{$path} != $index{$path})
+                if (exists($index_bypath{$path}) and $tree_bypath{$path}[3] ne $index_bypath{$path}[3])
                 {
-                        # we have a problem: corrupted file
-                        print "The file $tree{$path} is corrupted\n";
+                        # We have a problem
+                        print "Attention! The file $path may be corrupted.\n";
                 }
         }
-	
+
+        # Print the new healthy index
+        seek(INDEXFILE, 0, 0);
+        truncate(INDEXFILE, 0);
+        foreach my $checksum (keys(%index))
+        {
+                print INDEXFILE "$index{$checksum}[0]\t$index{$checksum}[1]\t$index{$checksum}[2]\t$index{$checksum}[3]\t$checksum\n";
+        }
+        close(INDEXFILE);
+
         return 0;
+}
+
+sub checksum
+{
+        my $ctx = $_[0];
+        my $path = $_[1];
+
+        # MD5 algorithm
+        open(my $fh, "<", $path)
+                or die "Could not open $path.";
+        $ctx->addfile($fh);
+        my $digest = $ctx->hexdigest;
+
+        close($fh);
+        return $digest;
+
+        # SHA algorithm
+        #$ctx->addfile($path);
+        #my $digest = $ctx->hexdigest;
+
+        #return $digest;
 }
 
 sub is_valid_dest

@@ -1,5 +1,5 @@
-bioinfoconda/data/data_index
-bioinfoconda/local/config/gitlab
+bioinfoconda/local/var/data_index
+bioinfoconda/local/etc/gitlab
 miniconda3/*
 prj/*
 data/*
