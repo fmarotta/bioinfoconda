@@ -1,3 +1,10 @@
+#######
+# cdp #
+#######
+
+# FIXME: prjhome does not change; we should not define it locally inside 
+# the _cdp function.
+
 function _cdp
 {
         local cur=${COMP_WORDS[COMP_CWORD]}
@@ -17,5 +24,4 @@ function _cdp
 
         return 0
 }
-
 complete -o filenames -o nospace -o bashdefault -F _cdp cdp
