@@ -2,13 +2,26 @@
 
 # TODO: save templates as files and default environment as yml.
 
-# TODO: add documentation for gitlab repository
+# TODO: improve documentation of -l.
 
-# TODO: edit project name
+# TODO: add date to ymlfiles of exported environmetns.
+
+# validate the environment
+if [[ -z "${BIOINFO_ROOT}" ]]; then
+	error '${BIOINFO_ROOT} is not defined' 3
+fi
+
+source $BIOINFO_ROOT/bioinfoconda/local/lib/bash/bash_functions
+
+if which conda > /dev/null; then
+        minicondapath=$(conda info --base)
+fi
+gitlab_config_file="$BIOINFO_ROOT/bioinfoconda/local/etc/gitlab"
 
 options=hTGlCir
 longoptions=help,no-templates,no-git,gitlab,no-conda,interactive-conda,remove
 
+# Usage string
 read -r -d '' usage << END
 Usage: `basename $0` [options] prjname
 
@@ -35,51 +48,67 @@ Notes:
         otherwise the environment will contain R, perl, cpanm and snakemake.
         Use this option only if you know what you are doing.
 
+        The \`-l' option is used to create a remote repository on gitlab
+        and associate it to the local repository. (If you pass this
+        option together with -r, the gitlab repository is deleted; see
+        below.)
+
+        To remove a project, use the \`-r' option and provide the
+        project name. The entire directory of the project, as well as
+        the related conda environment, if it exists, are eliminated. If
+        you also pass the -l option, the remote gitlab repository is
+        deleted too, if it exists.
+
 Reporting bugs:
 	federicomarotta AT mail DOT com
 END
 
-# define cleanup functions
+# Functions definition
 function clean_prj()
 {
 	prjpath=$1
 	prjname=$(basename $prjpath)
+        gitlab_username=$( awk '(NR == 2) {print $1}' $gitlab_config_file )
+        gitlab_group_id=$( awk '(NR == 2) {print $2}' $gitlab_config_file )
+        gitlab_token=$( awk '(NR == 2) {print $3}' $gitlab_config_file )
 
-        if conda info --envs | grep "^$prjname[[:space:]]" > /dev/null; then
-                conda env remove -y -n $prjname
-	fi
+        # Remove local directory
 	if [ -d $prjpath ]; then
 		rm -rf $prjpath
 	fi
-}
 
-# define logging functions
-function bug()
-{
-	>&2 echo "BUG: $1"
-	exit 99
-}
-function error()
-{
-	>&2 echo "ERROR: $1"
-
-	re='^[0-9]+$'
-	if ! [[ $2 =~ $re ]] ; then
-		bug "argument to error() is not a number."
-	else
-		exit $2
+        # Remove conda environment
+        if conda info --envs | grep "^$prjname[[:space:]]" > /dev/null; then
+                conda env remove -y -n $prjname
 	fi
-}
-function warn()
-{
-	>&2 echo "WARNING: $1"
-}
-function info()
-{
-	>&2 echo "INFO: $1"
-}
 
-# define validating functions
+        # Remove remote gitlab repository
+        if ((gitlab)); then
+                # Check for invalid gitlab configuration
+                if [ -z "$gitlab_username" ] || [ -z "$gitlab_group_id" ] || [ -z "$gitlab_token" ]; then
+                        echo "Invalid gitlab configuration. This feature requires you to provide some configuration parameters; check the documentation for help."
+                        return 4
+                fi
+                curl -s --header "Private-Token: $gitlab_token" \
+                        -X DELETE "https://gitlab.com/api/v4/projects/$gitlab_username%2F$prjname"
+        fi
+
+        #response=$( curl -s --header "Private-Token: $gitlab_token" \
+                #-X DELETE "https://gitlab.com/api/v4/projects/" \
+                #-d "name=$prjname" | jq -r ".message" )
+
+        #if [ "$?" != "0" ]; then
+                #echo "curl had some problems to send your request."
+                #return $?
+        #fi
+        #if [ "$response" != "null" ]; then
+                #echo "The GitLab API complained about your request:"
+                #echo $response
+                #return 8
+        #fi
+
+        return 0
+}
 function is_valid_name()
 {
 	re='^[0-9a-z_-]+$'
@@ -89,15 +118,13 @@ function is_valid_name()
 		return 1
 	fi
 }
-
-# define functional functions
 function make_dirs()
 {
 	prjpath=$1
 
 	mkdir -p $prjpath/dataset \
-        && mkdir -p $prjpath/local/{bin,src,lib,snakefiles,dockerfiles,ymlfiles,config,doc,data} \
-        && mkdir -p $prjpath/local/lib/{perl,python,R} \
+        && mkdir -p $prjpath/local/{bin,builds,src,lib,snakefiles,dockerfiles,ymlfiles,config,doc,data} \
+        && mkdir -p $prjpath/local/lib/{perl5,python,R} \
 	|| return $?
 
         configure_direnv_local $prjpath
@@ -123,8 +150,10 @@ function create_templates()
 	RUN conda env create -f $prjpath/local/ymlfiles/$prjname.yml
 
 	# Set up the environment
-	ENV PATH="$minicondapath/envs/$prjname/bin:$prjpath/local/bin\$PATH" \\
-	    PERL5LIB="$prjpath/local/lib/perl" \\
+        ENV PATH="$minicondapath/envs/$prjname/bin:$prjpath/local/bin:\$PATH" \\
+            PERL5LIB="$prjpath/local/lib/perl" \\
+            PERL_CPANM_HOME="$prjpath/local/builds/perl5" \\
+            PERL_CPANM_OPT="-l $prjpath/local --no-man-pages --save-dists=$prjpath/local/src/perl5" \\
 	    PYTHONPATH="$prjpath/local/lib/python" \\
 	    R_PROFILE_USER="$prjpath/.Rprofile" \\
 	    CONDA_DEFAULT_ENV="$prjname" \\
@@ -190,14 +219,13 @@ function initialise_gitlab_repo()
 {
         prjpath=$1
         prjname=$(basename $prjpath)
-        config_file="$BIOINFO_ROOT/prj/bioinfoconda/local/config/gitlab"
-        gitlab_username=$( awk '(NR == 2) {print $1}' $config_file )
-        gitlab_group_id=$( awk '(NR == 2) {print $2}' $config_file )
-        gitlab_token=$( awk '(NR == 2) {print $3}' $config_file )
+        gitlab_username=$( awk '(NR == 2) {print $1}' $gitlab_config_file )
+        gitlab_group_id=$( awk '(NR == 2) {print $2}' $gitlab_config_file )
+        gitlab_token=$( awk '(NR == 2) {print $3}' $gitlab_config_file )
 
         # Check for invalid configuration
         if [ -z "$gitlab_username" ] || [ -z "$gitlab_group_id" ] || [ -z "$gitlab_token" ]; then
-                echo "Invalid configuration. This feature requires you to provide some configuration parameters; check the documentation for help."
+                echo "Invalid gitlab configuration. This feature requires you to provide some configuration parameters; check the documentation for help."
                 return 4
         fi
 
@@ -280,14 +308,16 @@ function configure_direnv_conda()
 	prjname=$(basename $prjpath)
 
         echo "source activate $prjname" >> "$prjpath/.envrc"
-        echo ".libPaths( c(\"$minicondapath/envs/$prjname/lib/R/library\", .libPaths()) )" >> $prjpath/.Rprofile
+        echo ".libPaths( c(.libPaths(), \"$minicondapath/envs/$prjname/lib/R/library\") )" >> $prjpath/.Rprofile
 }
 function configure_direnv_local()
 {
 	prjpath=$1
 
         echo "export PATH=$prjpath/local/bin:$PATH" > "$prjpath/.envrc"
-        echo "export PERL5LIB=$prjpath/local/lib/perl" >> "$prjpath/.envrc"
+        echo "export PERL5LIB=$prjpath/local/lib/perl5" >> "$prjpath/.envrc"
+        echo "export PERL_CPANM_HOME=$prjpath/local/builds/perl5" >> "$prjpath/.envrc"
+        echo "export PERL_CPANM_OPT=\"-l $prjpath/local --no-man-pages --save-dists=$prjpath/local/src/perl5\"" >> "$prjpath/.envrc"
         echo "export PYTHONPATH=$prjpath/local/lib/python" >> "$prjpath/.envrc"
         echo "export R_PROFILE_USER=$prjpath/.Rprofile" >> "$prjpath/.envrc"
         echo ".libPaths( c(\"$prjpath/local/lib/R\", .libPaths()) )" > $prjpath/.Rprofile
@@ -297,7 +327,6 @@ function configure_direnv_local()
 PARSER=$(getopt --options=$options --longoptions=$longoptions --name "$0" -- "$@")
 eval set -- "$PARSER"
 
-# parse the options
 templates=1
 git=1
 gitlab=0
@@ -346,19 +375,13 @@ done
 
 # validate the options
 if ((remove)); then
-        if [[ $templates == 0 || $conda == 0 || $git == 0 || $gitlab == 1 || $interactive == 1 ]]; then
-                error "-r is not compatible with any other option." 5
+        if [[ $templates == 0 || $conda == 0 || $git == 0 || $interactive == 1 ]]; then
+                error "-r is not compatible with any other option (except -l)." 5
         fi
 fi
 if ! ((git)) && (($gitlab)); then
         error "-G is not compatible with -l." 5
 fi
-
-# validate the environment
-if [[ -z "${BIOINFO_ROOT}" ]]; then
-	error '${BIOINFO_ROOT} is not defined' 3
-fi
-minicondapath=$(conda info --base)
 
 # parse and validate the arguments
 if [[ $# -eq 1 ]]; then
