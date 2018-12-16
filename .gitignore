@@ -1,4 +1,4 @@
-bioinfoconda/local/var/data_index
+bioinfoconda/local/var/data_index*
 bioinfoconda/local/etc/gitlab
 miniconda3/*
 prj/*

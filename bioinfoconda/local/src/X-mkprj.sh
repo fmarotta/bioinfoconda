@@ -148,10 +148,10 @@ function create_templates()
 	RUN conda env create -f $prjpath/local/ymlfiles/$prjname.yml
 
 	# Set up the environment
-        ENV PATH="$minicondapath/envs/$prjname/bin:$prjpath/local/bin:\$PATH" \\
-            PERL5LIB="$prjpath/local/lib/perl" \\
-            PERL_CPANM_HOME="$prjpath/local/builds/perl5" \\
-            PERL_CPANM_OPT="-l $prjpath/local --no-man-pages --save-dists=$prjpath/local/src/perl5" \\
+	ENV PATH="$minicondapath/envs/$prjname/bin:$prjpath/local/bin:\$PATH" \\
+	    PERL5LIB="$prjpath/local/lib/perl" \\
+	    PERL_CPANM_HOME="$prjpath/local/builds/perl5" \\
+	    PERL_CPANM_OPT="-l $prjpath/local --no-man-pages --save-dists=$prjpath/local/src/perl5" \\
 	    PYTHONPATH="$prjpath/local/lib/python" \\
 	    R_PROFILE_USER="$prjpath/.Rprofile" \\
 	    CONDA_DEFAULT_ENV="$prjname" \\
@@ -164,12 +164,12 @@ function create_templates()
 	END
 
         cat <<- END > $prjpath/local/dockerfiles/dockerignore
-        # Exclude some hidden files
+	# Exclude some hidden files
 	.gitignore
 	.Rproj.user
 	.Rhistory
 	.envrc
-        # Exclude dataset and local/data (this speeds up the build time)
+	# Exclude dataset and local/data (this speeds up the build time)
 	dataset/*
         local/data/*
 	# Include snakefiles (due to a bug, they must be added individually)

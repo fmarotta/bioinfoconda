@@ -1,5 +1,9 @@
 #!/usr/bin/perl
 
+# NOTE: this program is for internal use only.
+# Input: a conda environment file (as recent as possible)
+# Output: the list of channels used in that environment
+
 use strict;
 use warnings;
 use File::Basename;

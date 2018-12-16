@@ -2,6 +2,8 @@
 
 # TODO: allow to run outside of an environment (parse -p and -n options)
 
+# TODO: we should parse all the options with optparse and validate them.
+
 # validate the environment
 if [[ ! -z "${BIOINFO_ROOT}" ]]; then
         source $BIOINFO_ROOT/bioinfoconda/local/lib/bash/bash_functions
@@ -56,13 +58,12 @@ Reporting bugs:
 	federicomarotta AT mail DOT com
 END
 
-# Validate the syntax
+# Check syntax and acquire options and arguments
 if [[ $# -eq 0 ]] || [ $1 != "install" ]; then
         error "$usage" 1
 fi
 argv="${@:2}"
 
-# check syntax and acquire options and arguments
 PARSER=$(getopt --options=$options --longoptions=$longoptions --name "$0" -- "$@")
 eval set -- "$PARSER"
 
@@ -77,7 +78,7 @@ while true; do
 			break
 			;;
 		* )
-                        # We cannot exclude any argument
+                        # For now we do not exclude any argument
                         shift
 			;;
 	esac

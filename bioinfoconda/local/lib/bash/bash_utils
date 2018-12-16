@@ -1,5 +1,7 @@
 source $BIOINFO_ROOT/bioinfoconda/local/lib/bash/bash_functions
 
+# TODO: cdp . brings you to /bioinfo/prj/currentprj
+
 #######
 # cdp #
 #######
