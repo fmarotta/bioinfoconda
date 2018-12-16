@@ -1,5 +1,10 @@
 #!/usr/bin/perl
 
+# NOTE: this program is for internal use only.
+# Input: a conda history file
+# Output: the list of manually installed packages, excluding manually 
+# removed packages
+
 use strict;
 use warnings;
 use File::Basename;
