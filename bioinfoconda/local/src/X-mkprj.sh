@@ -163,14 +163,15 @@ function create_templates()
 
 	END
 
-        cat <<- END > $prjpath/.dockerignore
-	# Exclude some hidden files
+        cat <<- END > $prjpath/local/dockerfiles/dockerignore
+        # Exclude some hidden files
 	.gitignore
 	.Rproj.user
 	.Rhistory
 	.envrc
-	# Exclude dataset (this speeds up the build time)
+        # Exclude dataset and local/data (this speeds up the build time)
 	dataset/*
+        local/data/*
 	# Include snakefiles (due to a bug, they must be added individually)
 	!dataset/Snakefile
 	END
@@ -197,10 +198,9 @@ function create_templates()
 	        [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]
 	END
 
-        ln -s $prjpath/local/snakefiles/Snakefile $prjpath/dataset/Snakefile \
-        || return $?
-        ln -s $prjpath/local/dockerfiles/Dockerfile $prjpath/Dockerfile \
-        || return $?
+        ln -s $prjpath/local/snakefiles/Snakefile $prjpath/dataset/Snakefile
+        ln -s $prjpath/local/dockerfiles/Dockerfile $prjpath/Dockerfile
+        ln -s $prjpath/local/dockerfiles/dockerignore $prjpath/.dockerignore
 
 	return 0
 }
@@ -210,6 +210,7 @@ function initialise_repo()
 
 	git init --shared=group $prjpath > /dev/null || return $?
 	echo dataset/* > $prjpath/.gitignore
+        echo local/data/* >> $prjpath/.gitignore
 
         return 0
 }
