@@ -4,8 +4,6 @@
 
 # TODO: improve documentation of -l.
 
-# TODO: add date to ymlfiles of exported environmetns.
-
 # validate the environment
 if [[ -z "${BIOINFO_ROOT}" ]]; then
 	error '${BIOINFO_ROOT} is not defined' 3
@@ -272,10 +270,11 @@ function create_default_conda()
 {
 	prjpath=$1
 	prjname=$(basename $prjpath)
+        date=$(date +%Y-%m-%d)
 
         conda create -y --name $prjname -c r -c conda-forge -c bioconda r perl perl-app-cpanminus snakemake \
         && conda config --file $minicondapath/envs/$prjname/.condarc --add channels r --add channels conda-forge --add channels bioconda \
-        && conda env export -n $prjname -f $prjpath/local/ymlfiles/$prjname.yml \
+        && conda env export -n $prjname -f $prjpath/local/ymlfiles/${date}_${prjname}.yml \
 	|| return $?
 
 	configure_direnv_conda $prjpath
@@ -286,14 +285,15 @@ function create_custom_conda()
 {
 	prjpath=$1
 	prjname=$(basename $prjpath)
+        date=$(date +%Y-%m-%d)
 
 	echo "Complete the command, then press enter to run it:"
 	while read -p "conda create -y --name $prjname " args; do
 		if ! conda create -y --name $prjname $args; then
 			echo "That did not work. Please try again:"
 		else
-                        conda env export -n $prjname -f $prjpath/local/ymlfiles/$prjname.yml
-			echo "Success!"
+                        conda env export -n $prjname -f $prjpath/local/ymlfiles/${date}_${prjname}.yml
+                        echo "Success!"
 			break
 		fi
 	done
