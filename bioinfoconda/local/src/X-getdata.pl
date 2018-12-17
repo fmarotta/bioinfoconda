@@ -17,6 +17,8 @@ use Getopt::Long;
 
 # TODO: check if new dest is overriding something
 
+# TODO: support file:// and scp:// protocols for local downloads
+
 my $NAME = basename($0);
 my $USAGE =<<USAGE;
 Usage: $NAME [options] URL
@@ -150,6 +152,7 @@ sub parse_url
         my $url = $_[0];
 
         my @parsed_url = ($url =~ m#^((.*)://)?(.*?)(:(\d+))?(/.*?)(\?(.+))?$#);
+	my @path = split(//, $parsed_url[5]);
 
         for (my $i = 0; $i < scalar(@parsed_url); $i++)
         {
@@ -162,6 +165,11 @@ sub parse_url
         {
                 $parsed_url[1] = "http";
         }
+	# If url has a trailing slash, download recursively
+	if ($path[-1] eq '/')
+	{
+		$parsed_url[5] .= '*';
+	}
         my @params = split(/&/, $parsed_url[6]);
 
         # The fields are as follows: protocol, domain name, port, path, query parameters
@@ -189,12 +197,15 @@ sub validate_url
         }
         elsif ($protocol =~ m/^ftp/)
         {
-                # If url has a trailing slash, download recursively
-                my @path = split(//, $path);
-                if ($path[-1] eq '/')
-                {
-                        $path .= '*';
-                }
+		# Only the last item can contain patterns
+		my @path = split(/\//, $path);
+		for (my $i = 0; $i < scalar(@path); $i++)
+		{
+                	if ($path[$i] =~ m/[\*\?\[\]\{\}]/ and $i != $#path)
+			{
+				die("ERROR: metacharacters are allowed only for file names, not for directories.\n");
+			}
+		}
         }
         else
         {
@@ -222,7 +233,7 @@ sub find_dest
         my $path = $_[1];
         my @params = @{$_[2]};
 
-        # Extract the first meaningful level domain
+	# Extract the first meaningful level domain
         my @levels = split(/\./, $domain);
         my $fld = '';
         for (my $i = 0; $i < scalar(@levels); $i++)
@@ -247,6 +258,11 @@ sub find_dest
                 {
                         next;
                 }
+		elsif ($dirs[$i] =~ m/[\*\?\[\]\{\}]/)
+		{
+                        $localdirs .= '/';
+			last;
+		}
                 else
                 {
                         $localdirs .= '/' . $dirs[$i];
@@ -301,9 +317,7 @@ foo/bin/a.txt, if bar/baz is not relevant.\n";
                         }
                         else
                         {
-                                print "The path must be relative to 
-                                $data_root, and cannot contain 
-                                '..'.\nTry again:\n";
+                                print "The path must be relative to $data_root, and cannot contain '..'.\nTry again:\n";
                                 next;
                         }
                 }
@@ -423,8 +437,8 @@ sub update_index
         for (my $i = 0; $i < scalar(@log); $i += 4)
         {
                 # @log contains, for each file, date, hour, url, path. 
-                # Logs for different files are stored sequentially, in a 
-                # flat way.
+		# Logs for different files are stored sequentially, in a 
+		# flat fashion.
 
                 # Compute checksum for each downloaded file
                 my $digest = checksum($ctx, $log[$i+3]);
