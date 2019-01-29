@@ -11,6 +11,7 @@ RUN addgroup --gid 5000 bioinfo \
 # Install base system utils
 RUN apt-get update && apt-get install -y \
         gawk \
+	git \
         locales \
         python \
         wget \

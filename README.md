@@ -416,6 +416,10 @@ variable.
 
 **Running the workflow** TODO
 
+#### Best practices
+
+* Always use relative links
+
 #### Extra: R Studio integration
 
 TODO
@@ -434,10 +438,8 @@ TODO.
 
 * Improve docker management
 
-* Keep an index of the data
-
 * Config file with default conda packages and default directories
 
 #### FIXME
 
-* If you are inside a project, X-getdata and X-mkprj are not available
+Apparently, at the moment everything works.
