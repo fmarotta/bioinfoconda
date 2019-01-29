@@ -315,7 +315,7 @@ function configure_direnv_local()
 {
 	prjpath=$1
 
-        echo "export PATH=$prjpath/local/bin:$PATH" > "$prjpath/.envrc"
+	echo "export PATH=$prjpath/local/bin:\$PATH" > "$prjpath/.envrc"
         echo "export PERL5LIB=$prjpath/local/lib/perl5" >> "$prjpath/.envrc"
         echo "export PERL_CPANM_HOME=$prjpath/local/builds/perl5" >> "$prjpath/.envrc"
         echo "export PERL_CPANM_OPT=\"-l $prjpath/local --no-man-pages --save-dists=$prjpath/local/src/perl5\"" >> "$prjpath/.envrc"
