@@ -4,6 +4,8 @@
 
 # TODO: improve documentation of -l.
 
+# TODO: use relative paths inside a project.
+
 # validate the environment
 if [[ -z "${BIOINFO_ROOT}" ]]; then
 	error '${BIOINFO_ROOT} is not defined' 3
@@ -147,12 +149,15 @@ function create_templates()
 	# NOTE: remember to export the environment before building the image
 	RUN conda env create -f $prjpath/local/ymlfiles/$prjname.yml
 
+	RUN chown -R root:bioinfo /bioinfo \
+		&& chmod -R 2775 /bioinfo
+
 	# Set up the environment
 	ENV PATH="$minicondapath/envs/$prjname/bin:$prjpath/local/bin:\$PATH" \\
-	    PERL5LIB="$prjpath/local/lib/perl" \\
+	    PERL5LIB="$prjpath/local/lib/perl:\$PERL5LIB" \\
 	    PERL_CPANM_HOME="$prjpath/local/builds/perl5" \\
 	    PERL_CPANM_OPT="-l $prjpath/local --no-man-pages --save-dists=$prjpath/local/src/perl5" \\
-	    PYTHONPATH="$prjpath/local/lib/python" \\
+	    PYTHONPATH="$prjpath/local/lib/python:\$PYTHONPATH" \\
 	    R_PROFILE_USER="$prjpath/.Rprofile" \\
 	    CONDA_DEFAULT_ENV="$prjname" \\
 	    CONDA_PREFIX="$minicondapath/envs/$prjname"
@@ -171,7 +176,8 @@ function create_templates()
 	.envrc
 	# Exclude dataset and local/data (this speeds up the build time)
 	dataset/*
-        local/data/*
+	local/data/*
+	local/dockerfiles/
 	# Include snakefiles (due to a bug, they must be added individually)
 	!dataset/Snakefile
 	END
@@ -194,13 +200,14 @@ function create_templates()
 	END
 
         cat <<- END > $prjpath/local/config/snakemake_config.yml
-	chr:
-	        [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]
+	BIOINFOCONDA_ROOT: "/bioinfo/"
+	DATA_ROOT: "/bioinfo/data/"
+	PRJ_ROOT: "/bioinfo/prj/integrated_twas/"
 	END
 
-        ln -s $prjpath/local/snakefiles/Snakefile $prjpath/dataset/Snakefile
-        ln -s $prjpath/local/dockerfiles/Dockerfile $prjpath/Dockerfile
-        ln -s $prjpath/local/dockerfiles/dockerignore $prjpath/.dockerignore
+	ln -s ../local/snakefiles/Snakefile $prjpath/dataset/Snakefile
+	ln -s local/dockerfiles/Dockerfile $prjpath/Dockerfile
+	ln -s local/dockerfiles/dockerignore $prjpath/.dockerignore
 
 	return 0
 }
@@ -211,6 +218,9 @@ function initialise_repo()
 	git init --shared=group $prjpath > /dev/null || return $?
 	echo dataset/* > $prjpath/.gitignore
         echo local/data/* >> $prjpath/.gitignore
+	echo .Rproj.user >> $prjpath/.gitignore
+	echo .Rhistory >> $prjpath/.gitignore
+	echo .RData >> $prjpath/.gitignore
 
         return 0
 }
@@ -262,7 +272,7 @@ function initialise_gitlab_repo()
         # Add the remote origins
         cd $prjpath
         git remote add origin "https://gitlab.com/$gitlab_username/$prjname.git"
-        git remote add ssh-origin "git@gitlab.com/$gitlab_username/$prjname.git"
+        git remote add ssh-origin "git@gitlab.com:$gitlab_username/$prjname.git"
         cd $OLDPWD
 
         return 0
@@ -308,7 +318,8 @@ function configure_direnv_conda()
 	prjpath=$1
 	prjname=$(basename $prjpath)
 
-        echo "source activate $prjname" >> "$prjpath/.envrc"
+	echo "source activate $prjname" >> "$prjpath/.envrc"
+	# It is important that the miniconda libraries come last.
         echo ".libPaths( c(.libPaths(), \"$minicondapath/envs/$prjname/lib/R/library\") )" >> $prjpath/.Rprofile
 }
 function configure_direnv_local()
