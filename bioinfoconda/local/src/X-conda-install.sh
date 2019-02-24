@@ -87,7 +87,7 @@ specs=$(X-conda-get-specs -f $history_file)
 
 # Recreate the environment
 info "Deactivating environment..."
-source deactivate
+conda deactivate
 
 info "Running: conda env remove -n $prjname"
 conda env remove -y -n $prjname
