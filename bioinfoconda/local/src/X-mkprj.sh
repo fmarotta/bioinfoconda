@@ -150,7 +150,7 @@ function create_templates()
 	RUN conda env create -f $prjpath/local/ymlfiles/$prjname.yml
 
 	RUN chown -R root:bioinfo /bioinfo \
-		&& chmod -R 2775 /bioinfo
+	    && chmod -R 2775 /bioinfo
 
 	# Set up the environment
 	ENV PATH="$minicondapath/envs/$prjname/bin:$prjpath/local/bin:\$PATH" \\
@@ -193,10 +193,10 @@ function create_templates()
 
 	# Run the entire pipeline and copy the files to a mountable directory
 	rule docker:
-	        input:
-	                ALL
-	        shell:
-	                "cp -R $prjpath/dataset/.?* $prjpath/results"
+	    input:
+		ALL
+	    shell:
+		"cp -R $prjpath/dataset/.?* $prjpath/results"
 	END
 
         cat <<- END > $prjpath/local/config/snakemake_config.yml
@@ -283,7 +283,7 @@ function create_default_conda()
 	prjname=$(basename $prjpath)
         date=$(date +%Y-%m-%d)
 
-        conda create -y --name $prjname -c r -c conda-forge -c bioconda r perl perl-app-cpanminus snakemake \
+		conda create -y --name $prjname -c r -c conda-forge -c bioconda r-base r-essentials perl perl-app-cpanminus snakemake \
         && conda config --file $minicondapath/envs/$prjname/.condarc --add channels r --add channels conda-forge --add channels bioconda \
         && conda env export -n $prjname -f $prjpath/local/ymlfiles/${date}_${prjname}.yml \
 	|| return $?
