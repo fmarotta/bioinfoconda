@@ -26,7 +26,7 @@ Usage: $NAME [options] URL
 Options:
         -R|--reject=pattern     Reject files matching pattern. (Not yet implemented)
         -f|--fix-index          Attempt to interactively fix the data index
-	-h|--help       	Print this message.
+        -h|--help       		Print this message.
 
 Notes:
 	URL is the Universal Resource Location of the file to download.
@@ -361,13 +361,13 @@ sub wget_simple
                 {
                         print $line;
                         # extract the information to be logged
-                        if ($line =~ m/ saved \[\d+\]$/)
+                        if ($line =~ m/ saved \[\d+\/\d+\]/)
                         {
                                 # We want @output to contain: date, 
                                 # hour, url, path. But wget simple 
                                 # returns only date, hour, path, so we 
                                 # add the url.
-                                @output = ($line =~ m/(.*) (.*) \(.*\) - '(.*)' saved \[\d+\]$/);
+                                @output = ($line =~ m/(.*) (.*) \(.*\) - '(.*)' saved \[\d+\/\d+\]/);
                                 splice(@output, 2, 0, $url);
                         }
                 }
