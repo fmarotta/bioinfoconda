@@ -16,6 +16,7 @@ source $BIOINFO_ROOT/bioinfoconda/local/lib/bash/bash_functions
 if which conda > /dev/null; then
         minicondapath=$(conda info --base)
 fi
+bioinfotreepath="$BIOINFO_ROOT/bioinfotree"
 gitlab_config_file="$BIOINFO_ROOT/bioinfoconda/local/etc/gitlab"
 
 options=hTGlCir
@@ -136,7 +137,7 @@ function create_templates()
 	prjpath=$1
 	prjname=$(basename $prjpath)
 
-        cat <<- END > $prjpath/local/dockerfiles/Dockerfile
+	cat <<- END > $prjpath/local/dockerfiles/Dockerfile
 	# Use the bioinfoconda parent image
 	# NOTE: you should set a version tag!
 	FROM cbuatmbc/bioinfoconda
@@ -150,25 +151,31 @@ function create_templates()
 	RUN conda env create -f $prjpath/local/ymlfiles/$prjname.yml
 
 	RUN chown -R root:bioinfo /bioinfo \
-	    && chmod -R 2775 /bioinfo
+	    && chmod -R 2777 /bioinfo
 
 	# Set up the environment
 	ENV PATH="$minicondapath/envs/$prjname/bin:$prjpath/local/bin:\$PATH" \\
-	    PERL5LIB="$prjpath/local/lib/perl:\$PERL5LIB" \\
-	    PERL_CPANM_HOME="$prjpath/local/builds/perl5" \\
-	    PERL_CPANM_OPT="-l $prjpath/local --no-man-pages --save-dists=$prjpath/local/src/perl5" \\
-	    PYTHONPATH="$prjpath/local/lib/python:\$PYTHONPATH" \\
+        PERL5LIB="$prjpath/local/lib/perl:$bioinfotreepath/local/lib/perl" \\
+        PERL_CPANM_HOME="$prjpath/local/builds/perl5" \\
+        PERL_CPANM_OPT="-l $prjpath/local --no-man-pages --save-dists=$prjpath/local/src/perl5" \\
+        PYTHONPATH="$prjpath/local/lib/python:$bioinfotreepath/local/lib/python" \\
 	    R_PROFILE_USER="$prjpath/.Rprofile" \\
 	    CONDA_DEFAULT_ENV="$prjname" \\
 	    CONDA_PREFIX="$minicondapath/envs/$prjname"
-	WORKDIR $prjpath/dataset
-	USER docker:bioinfo
 
-	# Write here the rest of the instructions.
+	# Establish the entry point
+	ENTRYPOINT ["$prjpath/local/dockerfiles/docker-entrypoint.sh"]
+	CMD ["snakemake --dag -Tsvg > dag.svg"]
 
 	END
 
-        cat <<- END > $prjpath/local/dockerfiles/dockerignore
+	cat <<- END > $prjpath/local/dockerfiles/docker-entrypoint.sh
+	#!/usr/bin/env bash
+	cd $prjpath/dataset
+	eval "\$@"
+	END
+
+	cat <<- END > $prjpath/local/dockerfiles/dockerignore
 	# Exclude some hidden files
 	.gitignore
 	.Rproj.user
@@ -177,12 +184,9 @@ function create_templates()
 	# Exclude dataset and local/data (this speeds up the build time)
 	dataset/*
 	local/data/*
-	local/dockerfiles/
-	# Include snakefiles (due to a bug, they must be added individually)
-	!dataset/Snakefile
 	END
 
-        cat <<- END > $prjpath/local/snakefiles/Snakefile
+	cat <<- END > $prjpath/local/snakefiles/Snakefile
 	# This is a template Snakefile, change it at will
 
 	# Set the config file
@@ -191,22 +195,28 @@ function create_templates()
 	# Define the final targets: all the others depend on them
 	ALL = ["foo.bed", "bar.png"]
 
-	# Run the entire pipeline and copy the files to a mountable directory
-	rule docker:
-	    input:
-		ALL
-	    shell:
-		"cp -R $prjpath/dataset/.?* $prjpath/results"
+	# Run the entire pipeline
+	rule all:
+	   input: ALL
 	END
 
-        cat <<- END > $prjpath/local/config/snakemake_config.yml
-	BIOINFOCONDA_ROOT: "/bioinfo/"
-	DATA_ROOT: "/bioinfo/data/"
-	PRJ_ROOT: "/bioinfo/prj/integrated_twas/"
+	cat <<- END > $prjpath/local/config/snakemake_config.yml
+	BIOINFOCONDA_ROOT:
+	   "$BIOINFO_ROOT/"
+	BIOINFOCONDA_PRJ:
+	   "$BIOINFO_ROOT/prj/"
+	BIOINFOCONDA_DATA:
+	   "$BIOINFO_ROOT/data/"
+	PRJ_ROOT:
+	   "$prjpath/"
+	PRJ_DATASET:
+	   "$prjpath/dataset/"
+	PRJ_DATA:
+	   "$prjpath/local/data/"
 	END
 
 	ln -s ../local/snakefiles/Snakefile $prjpath/dataset/Snakefile
-	ln -s local/dockerfiles/Dockerfile $prjpath/Dockerfile
+	#ln -s local/dockerfiles/Dockerfile $prjpath/Dockerfile
 	ln -s local/dockerfiles/dockerignore $prjpath/.dockerignore
 
 	return 0
@@ -217,7 +227,7 @@ function initialise_repo()
 
 	git init --shared=group $prjpath > /dev/null || return $?
 	echo dataset/* > $prjpath/.gitignore
-        echo local/data/* >> $prjpath/.gitignore
+	echo local/data/* >> $prjpath/.gitignore
 	echo .Rproj.user >> $prjpath/.gitignore
 	echo .Rhistory >> $prjpath/.gitignore
 	echo .RData >> $prjpath/.gitignore
