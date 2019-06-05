@@ -19,8 +19,6 @@ use Getopt::Long;
 
 # TODO: check if new dest is overriding something.
 
-# TODO: add --info=progress2 to rsync
-
 # TODO: pass @ARGV as @params for rsync, e.g. to specify port or
 # something else in the command line.
 
@@ -190,11 +188,17 @@ else
 	die("ERROR: unrecognised source. Please specify the protocol or the username\@host.\n");
 }
 
-# Add an entry to the index file
 if (@output)
 {
+	# Add an entry to the index file
 	print "Updating index...\n";
 	update_index(\@output);
+
+	# Remove write permissions to everybody
+	for (my $i = 0; $i < scalar(@output); $i += 4)
+	{
+	    chmod("0444", $output[$i+3]);
+	}
 }
 
 print "Done.";
