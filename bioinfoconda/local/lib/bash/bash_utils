@@ -1,14 +1,12 @@
 source $BIOINFO_ROOT/bioinfoconda/local/lib/bash/bash_functions
 
-# TODO: cdp . brings you to /bioinfo/prj/currentprj
-
 #######
 # cdp #
 #######
 
 export BIOINFOCONDA_OLDPWD="${BIOINFO_ROOT}/prj"
 
-# Updates BIOINFOCONDA_OLWPWD
+# Update BIOINFOCONDA_OLWPWD
 function cd
 {
         # Find current project, if any
@@ -32,7 +30,7 @@ function cd
                 if [ "$cur_prj" != "" ] && [ $cur_prj != $new_prj ]; then
                         BIOINFOCONDA_OLDPWD=$PWD
                 fi
-        # Elif we come out to the outside world...
+		# Elif we go out to the outside world...
         elif [ "$new_prj" == "" ]; then
                 # ...From a project
                 if [ "$cur_prj" != "" ]; then
@@ -55,6 +53,13 @@ function cdp
         elif [ "$#" == "1" ]; then
                 if [ $1 == "-" ]; then
                         cd $BIOINFOCONDA_OLDPWD
+				elif [ $1 == "." ]; then
+						if extract_prj $PWD > /dev/null; then
+								cur_prj=`extract_prj $PWD`
+								cd $prj_root/$cur_prj/dataset
+						else
+								cd $prj_root
+						fi
                 else
                         cd $prj_root/$1
                 fi
