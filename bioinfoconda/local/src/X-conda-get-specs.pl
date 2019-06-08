@@ -15,12 +15,12 @@ my $USAGE =<<USAGE;
 Usage: $NAME -f history_file
 
 Options:
-        -f|--file               The history file of the environment
-	-h|--help       	Print this message.
+	-f|--file		The history file of the environment
+	-h|--help		Print this message.
 
 Notes:
-        Prints the list of packages to be installed to replicate the
-        environment in its current state.
+	Prints the list of packages to be installed to replicate the
+	environment in its current state.
 
 Reporting bugs:
 	federicomarotta AT mail DOT com
@@ -30,30 +30,30 @@ USAGE
 my $help = 0;
 my $history_file = '';
 GetOptions(
-        "file|f=s" => \$history_file,
-        "help|h" => \$help
+	"file|f=s" => \$history_file,
+	"help|h" => \$help
 );
 
 # Print help message
 if ($help)
 {
-        print $USAGE;
-        exit 0;
+	print $USAGE;
+	exit 0;
 }
 
 # Validate arguments
 if ($history_file eq '')
 {
-        die "Error: $USAGE";
+	die "Error: $USAGE";
 }
 elsif (! -f $history_file)
 {
-        die "Error: $history_file is not a file.\n";
+	die "Error: $history_file is not a file.\n";
 }
 
 # Get the specs from history
 open HISTORY, "<", $history_file
-        or die "Error: could not open $history_file: $!";
+	or die "Error: could not open $history_file: $!";
 my @update_specs;
 while (<HISTORY>)
 {

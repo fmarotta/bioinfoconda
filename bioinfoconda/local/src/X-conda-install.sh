@@ -17,10 +17,12 @@ options=yfmCc:n:p:qkh
 longoptions=help
 
 date=$(date +%Y-%m-%d)
+minicondapath=$(conda info --base)
 prjname=$(basename ${CONDA_PREFIX})
 prjpath=${BIOINFO_ROOT}/prj/$prjname
 env_file=$prjpath/local/ymlfiles/${date}_${prjname}.yml
 history_file=${CONDA_PREFIX}/conda-meta/history
+argv=$@
 
 # Usage string
 read -r -d '' usage << END
@@ -87,19 +89,25 @@ specs=$(X-conda-get-specs -f $history_file)
 
 # Recreate the environment
 info "Deactivating environment..."
+source "$minicondapath/etc/profile.d/conda.sh"
 conda deactivate
 
 info "Running: conda env remove -n $prjname"
-conda env remove -y -n $prjname
+conda env remove -y -q -n $prjname
 
 info "Running: conda create --name $prjname $channels $argv $specs"
 conda create -y --name $prjname $channels $argv $specs
 
 if [[ $? -eq 0 ]]; then
-        info "Reactivating environment..."
+	# info "Reactivating environment..."
+	info "All done."
 else
 	error "Sorry, that did not work. You can regenerate the environment as it was through $env_file." 9
 fi
 
-source activate $prjname
-info "All done."
+# It's not necessary to reactivate the environment, because it was only 
+# deactivated for the shell opened by this script; activating the 
+# environment here would be pointless.
+
+# source activate $prjname
+# info "All done."

@@ -15,13 +15,13 @@ my $USAGE =<<USAGE;
 Usage: $NAME -f env_file
 
 Options:
-        -f|--file               The yml file containing the environment
-	-h|--help       	Print this message.
+	-f|--file		The yml file containing the environment
+	-h|--help		Print this message.
 
 Notes:
-        Prints the channels of the specified environment, in the priority
-        order. Remember to export the environment to a file before using
-        this script, so that the channel list is updated.
+	Prints the channels of the specified environment, in the priority
+	order. Remember to export the environment to a file before using
+	this script, so that the channel list is updated.
 
 Reporting bugs:
 	federicomarotta AT mail DOT com
