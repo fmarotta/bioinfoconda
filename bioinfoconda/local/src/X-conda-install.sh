@@ -20,43 +20,43 @@ date=$(date +%Y-%m-%d)
 minicondapath=$(conda info --base)
 prjname=$(basename ${CONDA_PREFIX})
 prjpath=${BIOINFO_ROOT}/prj/$prjname
-env_file=$prjpath/local/ymlfiles/${date}_${prjname}.yml
+env_file=$prjpath/local/ymlfiles/${prjname}_${date}.yml
 history_file=${CONDA_PREFIX}/conda-meta/history
 argv=$@
 
 # Usage string
 read -r -d '' usage << END
 Usage:
-	 X-conda install -c CHANNEL PACKAGE1 PACKAGE2 ...
+        X-conda install -c CHANNEL PACKAGE1 PACKAGE2 ...
 
 More in detail:
-        `basename $0` install [-y] [--dry-run] [-f] [--no-deps] [-m]
-                [-C] [--use-local] [--offline] [--no-pin] [-c CHANNEL]
-                [--override-channels] [-n ENVIRONMENT | -p PATH] [-q]
-                [--copy] [-k] [--update-dependencies]
-                [--no-update-dependencies] [--channel-priority]
-                [--no-channel-priority] [--clobber]
-                [--show-channel-urls] [--no-show-channel-urls]
-                [--download-only] [--json] [--debug] [--verbose]
-                [PACKAGE1 [PACKAGE2 [...]]]
+    `basename $0` install [-y] [--dry-run] [-f] [--no-deps] [-m]
+            [-C] [--use-local] [--offline] [--no-pin] [-c CHANNEL]
+            [--override-channels] [-n ENVIRONMENT | -p PATH] [-q]
+            [--copy] [-k] [--update-dependencies]
+            [--no-update-dependencies] [--channel-priority]
+            [--no-channel-priority] [--clobber]
+            [--show-channel-urls] [--no-show-channel-urls]
+            [--download-only] [--json] [--debug] [--verbose]
+            [PACKAGE1 [PACKAGE2 [...]]]
 
 Options:
-        For an explanation of the options, see the usage of \`conda
-        create'.
+    For an explanation of the options, see the usage of \`conda
+    create'.
 
 Notes:
-        This program removes and recreate the current conda environment.
-        It is the heavy artillery to be deployed when "conda install"
-        fails. As specified in the documentation of conda, the
-        installation of all the packages at once reduces the chances
-        of conflicts.
-
-        If you do not provide any option, the environment will be
-        simply regenerated; this might be useful to solve some
-        conda-related problems.
+    This program removes and recreate the current conda environment.
+    It is the heavy artillery to be deployed when "conda install"
+    fails. As specified in the documentation of conda, the
+    installation of all the packages at once reduces the chances
+    of conflicts.
+ 
+    If you do not provide any option, the environment will be
+    simply regenerated; this might be useful to solve some
+    conda-related problems.
 
 Reporting bugs:
-	federicomarotta AT mail DOT com
+    federicomarotta AT mail DOT com
 END
 
 PARSER=$(getopt --options=$options --longoptions=$longoptions --name "$0" -- "$@")
@@ -73,8 +73,8 @@ while true; do
 			break
 			;;
 		* )
-                        # For now we do not exclude any argument
-                        shift
+            # For now we do not exclude any argument
+            shift
 			;;
 	esac
 done

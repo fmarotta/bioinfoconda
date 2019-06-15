@@ -12,7 +12,7 @@ Options:
 
 Notes:
 	The environment is exported in the local/ymlfiles of the project
-	and the files are chronologically ordered.
+	and the files are ordered by name and exportation date.
 
 Reporting bugs:
 	federicomarotta AT mail DOT com
@@ -29,7 +29,7 @@ longoptions=help
 date=$(date +%Y-%m-%d)
 prjname=$(basename ${CONDA_PREFIX})
 prjpath=${BIOINFO_ROOT}/prj/$prjname
-env_file=$prjpath/local/ymlfiles/${date}_${prjname}.yml
+env_file=$prjpath/local/ymlfiles/${prjname}_${date}.yml
 
 # Parse the options
 PARSER=$(getopt --options=$options --longoptions=$longoptions --name "$0" -- "$@")
