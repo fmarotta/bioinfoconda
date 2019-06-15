@@ -151,7 +151,8 @@ function create_templates()
 	COPY . $prjpath
 	
 	# Create the conda environment from the yml file
-	# NOTE: remember to export the environment before building the image
+	# NOTE: remember to export the environment before building the 
+	# image, and to edit the following path with the new file.
 	RUN conda env create -f $prjpath/local/ymlfiles/$prjname.yml
 	
 	RUN chown -R root:bioinfo /bioinfo \
@@ -228,11 +229,14 @@ function initialise_repo()
     prjpath=$1
 
     git init --shared=group $prjpath > /dev/null || return $?
-    echo dataset/* > $prjpath/.gitignore
-    echo local/data/* >> $prjpath/.gitignore
-    echo .Rproj.user >> $prjpath/.gitignore
-    echo .Rhistory >> $prjpath/.gitignore
-    echo .RData >> $prjpath/.gitignore
+	echo .RData > $prjpath/.gitignore
+	echo .Rhistory >> $prjpath/.gitignore
+	echo .Rproj.user >> $prjpath/.gitignore
+	echo dataset/* >> $prjpath/.gitignore
+	echo local/benchmark/* >> $prjpath/.gitignore
+	echo local/data/* >> $prjpath/.gitignore
+	echo local/log/* >> $prjpath/.gitignore
+	echo local/tmp/* >> $prjpath/.gitignore
 
     return 0
 }
@@ -299,7 +303,7 @@ function create_default_conda()
 
     conda create -y --name $prjname -c r -c conda-forge -c bioconda r-base r-essentials perl perl-app-cpanminus snakemake \
         && conda config --file $minicondapath/envs/$prjname/.condarc --add channels r --add channels conda-forge --add channels bioconda \
-        && conda env export -n $prjname -f $prjpath/local/ymlfiles/${date}_${prjname}.yml \
+		&& conda env export -n $prjname -f $prjpath/local/ymlfiles/${prjname}_${date}.yml \
     || return $?
 
     configure_direnv_conda $prjpath
@@ -317,7 +321,7 @@ function create_custom_conda()
         if ! conda create -y --name $prjname $args; then
             echo "That did not work. Please try again:"
         else
-            conda env export -n $prjname -f $prjpath/local/ymlfiles/${date}_${prjname}.yml
+			conda env export -n $prjname -f $prjpath/local/ymlfiles/${prjname}_${date}.yml
             echo "Success!"
             break
         fi
