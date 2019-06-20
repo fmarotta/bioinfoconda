@@ -233,6 +233,7 @@ function initialise_repo()
 	echo .Rhistory >> $prjpath/.gitignore
 	echo .Rproj.user >> $prjpath/.gitignore
 	echo dataset/* >> $prjpath/.gitignore
+	echo !dataset/Snakefile >> $prjpath/.gitignore
 	echo local/benchmark/* >> $prjpath/.gitignore
 	echo local/data/* >> $prjpath/.gitignore
 	echo local/log/* >> $prjpath/.gitignore
