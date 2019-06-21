@@ -153,7 +153,7 @@ function create_templates()
 	# Create the conda environment from the yml file
 	# NOTE: remember to export the environment before building the 
 	# image, and to edit the following path with the new file.
-	RUN conda env create -f $prjpath/local/ymlfiles/$prjname.yml
+	RUN conda env create -f $prjpath/local/condafiles/$prjname.yml
 	
 	RUN chown -R root:bioinfo /bioinfo \
 	    && chmod -R 2777 /bioinfo
@@ -304,8 +304,8 @@ function create_default_conda()
 
     conda create -y --name $prjname -c r -c conda-forge -c bioconda r-base r-essentials perl perl-app-cpanminus snakemake \
         && conda config --file $minicondapath/envs/$prjname/.condarc --add channels r --add channels conda-forge --add channels bioconda \
-		&& conda env export -n $prjname -f $prjpath/local/ymlfiles/${prjname}_${date}.yml \
-    || return $?
+		&& conda env export -n $prjname -f $prjpath/local/condafiles/${prjname}_${date}.yml \
+	|| return $?
 
     configure_direnv_conda $prjpath
 
@@ -322,7 +322,7 @@ function create_custom_conda()
         if ! conda create -y --name $prjname $args; then
             echo "That did not work. Please try again:"
         else
-			conda env export -n $prjname -f $prjpath/local/ymlfiles/${prjname}_${date}.yml
+			conda env export -n $prjname -f $prjpath/local/condafiles/${prjname}_${date}.yml
             echo "Success!"
             break
         fi

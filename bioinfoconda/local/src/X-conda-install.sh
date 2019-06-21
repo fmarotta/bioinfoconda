@@ -20,7 +20,7 @@ date=$(date +%Y-%m-%d)
 minicondapath=$(conda info --base)
 prjname=$(basename ${CONDA_PREFIX})
 prjpath=${BIOINFO_ROOT}/prj/$prjname
-env_file=$prjpath/local/ymlfiles/${prjname}_${date}.yml
+env_file=$prjpath/local/condafiles/${prjname}_${date}.yml
 history_file=${CONDA_PREFIX}/conda-meta/history
 argv=$@
 
