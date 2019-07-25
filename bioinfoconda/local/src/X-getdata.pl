@@ -69,11 +69,11 @@ USAGE
 # Validate environment
 if (defined $ENV{"BIOINFO_ROOT"} && length($ENV))
 {
-        die("ERROR: \$BIOINFO_ROOT is not defined.\n");
+    die("ERROR: \$BIOINFO_ROOT is not defined.\n");
 }
 if (! -d "$ENV{'BIOINFO_ROOT'}/data")
 {
-        die("ERROR: $ENV{'BIOINFO_ROOT'}/data does not exists.\n")
+    die("ERROR: $ENV{'BIOINFO_ROOT'}/data does not exists.\n")
 }
 my $data_root = "$ENV{'BIOINFO_ROOT'}/data/";
 my $index_file = "$ENV{'BIOINFO_ROOT'}/bioinfoconda/local/var/data_index";
@@ -83,39 +83,39 @@ my $help = 0;
 my $reject = '';
 my $fix_index = 0;
 GetOptions(
-        "reject|R=s" => \$reject,
-        "fix-index|f" => \$fix_index,
-        "help|h" => \$help
+    "reject|R=s" => \$reject,
+    "fix-index|f" => \$fix_index,
+    "help|h" => \$help
 );
 
 # Print help message
 if ($help)
 {
-        print $USAGE;
-        exit 0;
+    print $USAGE;
+    exit 0;
 }
 
 # Fix index
 if ($fix_index)
 {
-        # Check syntax
-        if (scalar(@ARGV) != 0)
-        {
-                print "You cannot specify an URL when fixing the index.\n";
-                print $USAGE;
-                exit 1;
-        }
-        if ($reject ne '')
-        {
-                print "-f is not compatible with -R.\n";
-                print $USAGE;
-                exit 1;
-        }
+    # Check syntax
+    if (scalar(@ARGV) != 0)
+    {
+        print "You cannot specify an URL when fixing the index.\n";
+        print $USAGE;
+        exit 1;
+    }
+    if ($reject ne '')
+    {
+        print "-f is not compatible with -R.\n";
+        print $USAGE;
+        exit 1;
+    }
 
-        # Try to fix the index
-        fix_index($index_file);
+    # Try to fix the index
+    fix_index($index_file);
 
-        exit 0;
+    exit 0;
 }
 
 # By default, download
@@ -149,11 +149,11 @@ if ($source =~ m#^https?://# or $source =~ m#^ftps?://#)
 	# Finally download the files
 	if (is_recursive($v_source))
 	{
-	        @output = wget_recursive($v_source, $data_root . $dest);
+	    @output = wget_recursive($v_source, $data_root . $dest);
 	}
 	else
 	{
-	        @output = wget_simple($v_source, $data_root . $dest);
+	    @output = wget_simple($v_source, $data_root . $dest);
 	}
 }
 elsif ($source =~ m#^rsync://# or $source =~ m/@/)
@@ -197,7 +197,7 @@ if (@output)
 	# Remove write permissions to everybody
 	for (my $i = 0; $i < scalar(@output); $i += 4)
 	{
-	    chmod("0444", $output[$i+3]);
+	    chmod(0444, $output[$i+3]);
 	}
 }
 
@@ -402,6 +402,7 @@ sub find_dest_url
 
 	# Recompose the destination path
 	my $tmp_dest = $fld . $localdirs;
+	$tmp_dest =~ s#^/##;
 
 	# Manually override the proposed destination
 	my $dest = edit_dest($tmp_dest);
@@ -480,48 +481,48 @@ foo/bin/a.txt, if bar/baz is not relevant.\n";
 
 sub wget_simple
 {
-        my $url = $_[0];
-        my $dest = $_[1];
-        my $dirname = dirname($dest);
-        my @output = (0);
-
-        unless(-d $dirname or make_path($dirname))
+    my $url = $_[0];
+    my $dest = $_[1];
+    my $dirname = dirname($dest);
+    my @output = (0);
+ 
+    unless(-d $dirname or make_path($dirname))
+    {
+        die("ERROR: cannot make path $dirname.\n");
+    }
+ 
+    open(WGETOUTPUT, "wget -O $dest $url 2>&1 |");
+    while (my $line = <WGETOUTPUT>)
+    {
+        # update the progress line...
+        if ($line =~ m/^\s*\d+[KMGT]\s+/)
         {
-                die("ERROR: cannot make path $dirname.\n");
+            chomp $line;
+            print "\r$line";
+            # put back the "\n" to the last line
+            if ($line =~ m/100%/)
+            {
+                print "\n";
+            }
         }
-
-        open(WGETOUTPUT, "wget -O $dest $url 2>&1 |");
-        while (my $line = <WGETOUTPUT>)
+        # ...and append the other lines
+        else
         {
-                # update the progress line...
-                if ($line =~ m/^\s+\d/)
-                {
-                        chomp $line;
-                        print "\r$line";
-                        # put back the "\n" to the last line
-                        if ($line =~ m/100%/)
-                        {
-                                print "\n";
-                        }
-                }
-                # ...and append the other lines
-                else
-                {
-                        print $line;
-                        # extract the information to be logged
-                        if ($line =~ m/ saved \[.*\]/)
-                        {
-                                # We want @output to contain: date, 
-                                # hour, url, path. But wget simple 
-                                # returns only date, hour, path, so we 
-                                # add the url.
-                                @output = ($line =~ m/(.*) (.*) \(.*\) - '(.*)' saved \[.*\]/);
-                                splice(@output, 2, 0, $url);
-                        }
-                }
+            print $line;
+            # extract the information to be logged
+            if ($line =~ m/ saved \[.*\]/)
+            {
+                # We want @output to contain: date, 
+                # hour, url, path. But wget simple 
+                # returns only date, hour, path, so we 
+                # add the url.
+                @output = ($line =~ m/(.*) (.*) \(.*\) - '(.*)' saved \[.*\]/);
+                splice(@output, 2, 0, $url);
+            }
         }
-
-        return @output;
+    }
+ 
+    return @output;
 }
 
 sub wget_recursive
@@ -549,7 +550,7 @@ sub wget_recursive
         while (my $line = <WGETOUTPUT>)
         {
                 # update the progress line...
-                if ($line =~ m/^\s*\d/ and $line =~ m/%/)
+                if ($line =~ m/^\s*\d+[KMGT]\s+/ and $line =~ m/%/)
                 {
                         chomp $line;
                         print "\r$line";
@@ -635,27 +636,27 @@ sub rsync_recursive
 
 sub update_index
 {
-        my @log = @{$_[0]};
-        #my $ctx = Digest::SHA->new(1);
-        my $ctx = Digest::MD5->new;
+    my @log = @{$_[0]};
+    #my $ctx = Digest::SHA->new(1);
+    my $ctx = Digest::MD5->new;
 
-        open(INDEXFILE, ">>", $index_file)
-                or die "ERROR: cannot open $index_file.";
+    open(INDEXFILE, ">>", $index_file)
+	    or die "ERROR: cannot open $index_file.";
 
-        for (my $i = 0; $i < scalar(@log); $i += 4)
-        {
-                # @log contains, for each file, date, hour, url, path. 
+    for (my $i = 0; $i < scalar(@log); $i += 4)
+    {
+        # @log contains, for each file, date, hour, url, path. 
 		# Logs for different files are stored sequentially, in a 
 		# flat fashion.
 
-                # Compute checksum for each downloaded file
-                my $digest = checksum($ctx, $log[$i+3]);
+        # Compute checksum for each downloaded file
+        my $digest = checksum($ctx, $log[$i+3]);
 
-                # Append line to the index
-                print INDEXFILE "$log[$i] $log[$i+1]\t$ENV{USER}\t$log[$i+2]\t$log[$i+3]\t$digest\n";
-        }
+        # Append line to the index
+        print INDEXFILE "$log[$i] $log[$i+1]\t$ENV{USER}\t$log[$i+2]\t$log[$i+3]\t$digest\n";
+    }
 
-        close(INDEXFILE);
+    close(INDEXFILE);
 }
 
 sub fix_index
@@ -747,23 +748,23 @@ sub fix_index
 
 sub checksum
 {
-        my $ctx = $_[0];
-        my $path = $_[1];
+    my $ctx = $_[0];
+    my $path = $_[1];
 
-        # MD5 algorithm
-        open(my $fh, "<", $path)
-                or die "Could not open $path.";
-        $ctx->addfile($fh);
-        my $digest = $ctx->hexdigest;
+    # MD5 algorithm
+    open(my $fh, "<", $path)
+            or die "Could not open $path.";
+    $ctx->addfile($fh);
+    my $digest = $ctx->hexdigest;
 
-        close($fh);
-        return $digest;
+    close($fh);
+    return $digest;
 
-        # SHA algorithm
-        #$ctx->addfile($path);
-        #my $digest = $ctx->hexdigest;
+    # SHA algorithm
+    #$ctx->addfile($path);
+    #my $digest = $ctx->hexdigest;
 
-        #return $digest;
+    #return $digest;
 }
 
 sub is_valid_dest
@@ -789,7 +790,7 @@ sub is_prefix
         # list of prefixes
         # soe: ucsc
         # cse: ucsc
-        my @prefixes = ("www", "ftp", "soe", "cse");
+        my @prefixes = ("www", "ftp", "soe", "cse", "com");
 
         for (my $i = 0; $i < scalar(@prefixes); $i++)
         {
@@ -806,7 +807,7 @@ sub is_pseudo
 {
         my $dir = $_[0];
         my @pseudodirs = ("pub", ".*?download.*?", "tmp", "files", 
-                "goldenPath", "ftp", "databases");
+                "goldenPath", "ftp", "databases", "storage", "googleapis");
 
         for (my $i = 0; $i < scalar(@pseudodirs); $i++)
         {
