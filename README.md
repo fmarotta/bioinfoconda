@@ -265,11 +265,12 @@ page](https://anaconda.org/bioconda/samtools)).
 
 **Getting software -- manual compilation** Similarly, samtools is 
 packaged in anaconda repositories, so we could install it as easily as 
-`conda install -c bioconda samtools`; nevertheless, for the sake of this 
-example, let us install it manually. We browse the web and find the 
-samtools page at http://www.htslib.org/download/; we want to download 
-the source code in the project's local/src, then install samtools under 
-local/builds, and finally copy the binary files in local/bin. We run:
+typing `conda install -c bioconda samtools`; nevertheless, for the sake 
+of this example, let us install it manually. We browse the web and find 
+the samtools page at http://www.htslib.org/download/; we want to 
+download the source code in the project's local/src, then install 
+samtools under local/builds, and finally copy the binary files in 
+local/bin. We run:
 
 ```
 cd $BIOINFO_ROOT/prj/microbe-genome-analysis/local/src
@@ -290,6 +291,18 @@ make install
 We probably will need to download additional dependencies such as 
 ncurses and bzip2. Always try to install them with conda; install them 
 manually only as a last resort.
+
+Missing libraries are a very common source of troubles. For instance, 
+when compiling a program from within a conda environment it may happen 
+that a library is not found in spite of it being installed. If such 
+library is installed in the system (*i.e.* under `/usr`) you may fix the 
+problem by setting an environmental variable specifying where the 
+library is to be found. For instance, if you are compiling a rust 
+program and the libz library is not found, but it is installed under 
+`/usr/lib/x86_64/`, then you may set the environmental variable 
+`RUSTFLAGS=-L/usr/lib/x86_64-linux-gnu`. If you alter some environmental 
+variable, you should always make the change permanent by editing the 
+.envrc and the dockerfile of your project.
 
 We are nearly done: we have our source code in local/src/samtools-1.9 
 and the built program in local/builds/samtools-1.9. It is good practice 
