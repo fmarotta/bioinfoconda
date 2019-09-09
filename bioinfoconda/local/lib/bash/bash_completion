@@ -1,0 +1,33 @@
+#######
+# cdp #
+#######
+
+# FIXME: prjhome does not change; we should not define it locally inside 
+# the _cdp function.
+
+function _cdp
+{
+        local cur=${COMP_WORDS[COMP_CWORD]}
+        local prjhome="$BIOINFO_ROOT/prj"
+        local IFS=$' \t\n'
+
+        IFS=$'\n'
+        COMPREPLY=( $(cd $prjhome && compgen -d -- "$cur") )
+        COMPREPLY=( "${COMPREPLY[@]/%//}" )
+        IFS=$' \t\n'
+
+        # variable names if appropriate shell option set and no 
+        # completions
+        if shopt -q cdable_vars && [[ ${#COMPREPLY[@]} -eq 0 ]]; then
+                COMPREPLY=( $(compgen -v -- "$cur") )
+        fi
+
+        return 0
+}
+complete -o filenames -o nospace -o bashdefault -F _cdp cdp
+
+#############
+# snakemake #
+#############
+
+complete -o filenames -o nospace -o bashdefault -C snakemake-bash-completion snakemake
