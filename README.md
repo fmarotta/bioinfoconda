@@ -16,8 +16,7 @@ easily incapsulated in Docker containers.
    have root permissions, you can clone it for instance directly under 
 the root directory, while if you are an unprivileged user you can clone 
 it under your home directory.
-    * `git clone --recurse-submodules 
-      https://github.com/fmarotta/bioinfoconda`
+	* `git clone https://github.com/fmarotta/bioinfoconda`
 
 2. Install Miniconda (you can install it in any path, but if you want to 
    have everything in a place, install it under bioinfoconda)
@@ -31,14 +30,16 @@ system)
 4. (Optional) Install Docker
     * Instructions [here](https://docs.docker.com/install/)
 
+5. (Optional) Install Bioinfotree
+
 5. Set up the environment
     * Set BIOINFO\_ROOT to the path where you cloned the repository
     * Add bioinfoconda's executables to your PATH
     * Add miniconda's executables to your PATH
+	* Make sure you have LC\_ALL set
+    * Configure the bashrc so that direnv works
     * Add bioinfotree's executables to your PATH
     * Add bioinfotree's python and perl libraries to the environment
-    * Make sure you have LC\_ALL set
-    * Configure the bashrc so that direnv works
 
 6. (Useful in a multi-user system) Create a 'bioinfoconda' group and fix 
    the directory permissions (then add the users supposed to use 
@@ -58,11 +59,13 @@ Bioinfoconda
 # ----------------------------------------------------------------------
 
 # Export environment variables
-export BIOINFO_ROOT="/bioinfoconda"
-export PATH="$BIOINFO_ROOT/bioinfotree/local/bin:/bioinfoconda/prj/bioinfoconda/local/bin:/bioinfoconda/miniconda/bin:$PATH"
-export PYTHONPATH="$BIOINFO_ROOT/bioinfotree/local/lib/python"
-export PERL5LIB="$BIOINFO_ROOT/bioinfotree/local/lib/perl"
 export LC_ALL="en_US.utf8"
+export BIOINFO_ROOT="/bioinfoconda"
+export PATH="$BIOINFO_ROOT/bioinfoconda/bin:/bioinfoconda/miniconda/bin:$PATH"
+# If you have bioinfotree add also the following three exports
+# export PATH="$BIOINFO_ROOT/bioinfotree/local/bin:$PATH"
+# export PYTHONPATH="$BIOINFO_ROOT/bioinfotree/local/lib/python"
+# export PERL5LIB="$BIOINFO_ROOT/bioinfotree/local/lib/perl"
 
 # Configure direnv
 eval "$(direnv hook bash)"
@@ -128,7 +131,7 @@ easier, we created the `X-getdata` command, whose syntax is
 X-getdata URL
 ```
 
-It supports both http and ftp protocols and is able to download a 
+It supports http, ftp and rsync protocols and is able to download a 
 directory recursively, as well as to download only those files which 
 match a pattern. Third-party data sets are usually well documented and 
 structured, therefore it makes sense to maintain their original 
@@ -139,25 +142,10 @@ foo/boo/bar/baz.vcf.gz. If you are not satisfied with the suggestion,
 you can manually override it. Files are downloaded inside the 
 *$BIOINFO\_ROOT/data* directory.
 
-##### TODO
-
-To warrant reproducibility we need a way to log for each downloaded file 
-its URL and the date when it was downloaded. A possible option is to 
-have a simple XML file with the index of the data directory; we should 
-then periodically compare the index with the real directory tree so that 
-when files are moved or deleted a warning appears (similar to what git 
-does). The disadvantage would be that when many files are downloaded the 
-comparison can be quite slow. Another possibility is to embed custom 
-metadata to the files using setfattr and getfattr; here the drawback 
-would be that accessing the data would be perhaps more difficult.
+For each downloaded file, `X-getdata` creates an entry in a log file, so 
+that it will be easy to find out who downloaded a file and from where.
 
 ### Working on a Project
-
-First of all, note that bioinfoconda is itself a project in 
-bioinfoconda. (We liked the idea of a 'metaproject', which everyone in 
-the system could contribute to and improve just like any other data 
-analysis project.) After all, the directory can be moved to another 
-place, provided that the environment varialbes are changed as well.
 
 When working on a project it is common to require a specific program to 
 perform some operations. There are two options: either an existing 
@@ -409,7 +397,7 @@ direnv, when we work at this project the environment variable PERL5LIB
 is set to local/lib/perl5. (for other programming language it works 
 similarly.) When we are done we should make sure that this script is in 
 the PATH environment variable, so we simply link it under 
-local/bin/parse_microbe_sample.
+`local/bin/parse_microbe_sample`.
 
 We now come back to the dataset directory and write a second snakerule:
 
