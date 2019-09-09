@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source $BIOINFO_ROOT/bioinfoconda/local/lib/bash/bash_functions
+source $BIOINFO_ROOT/bioinfoconda/lib/bash/bash_functions
 
 # Usage string
 read -r -d '' usage << END

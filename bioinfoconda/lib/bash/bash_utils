@@ -1,4 +1,4 @@
-source $BIOINFO_ROOT/bioinfoconda/local/lib/bash/bash_functions
+source $BIOINFO_ROOT/bioinfoconda/lib/bash/bash_functions
 
 #######
 # cdp #

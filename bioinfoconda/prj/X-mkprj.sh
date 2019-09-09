@@ -11,13 +11,13 @@ if [[ -z "${BIOINFO_ROOT}" ]]; then
     error '${BIOINFO_ROOT} is not defined' 3
 fi
 
-source $BIOINFO_ROOT/bioinfoconda/local/lib/bash/bash_functions
+source $BIOINFO_ROOT/bioinfoconda/lib/bash/bash_functions
 
 if which conda > /dev/null; then
     minicondapath=$(conda info --base)
 fi
 bioinfotreepath="$BIOINFO_ROOT/bioinfotree"
-gitlab_config_file="$BIOINFO_ROOT/bioinfoconda/local/etc/gitlab"
+gitlab_config_file="$BIOINFO_ROOT/bioinfoconda/gitlab/gitlab_config"
 
 options=hTGlCir
 longoptions=help,no-templates,no-git,gitlab,no-conda,interactive-conda,remove

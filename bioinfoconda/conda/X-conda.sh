@@ -4,7 +4,7 @@
 
 # validate the environment
 if [[ ! -z "${BIOINFO_ROOT}" ]]; then
-        source $BIOINFO_ROOT/bioinfoconda/local/lib/bash/bash_functions
+		source $BIOINFO_ROOT/bioinfoconda/lib/bash/bash_functions
 else
 	>&2 echo 'ERROR: ${BIOINFO_ROOT} is not defined'
 	exit 3

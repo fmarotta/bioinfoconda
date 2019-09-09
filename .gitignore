@@ -1,6 +1,6 @@
 bioinfotree/*
-bioinfoconda/local/var/data_index*
-bioinfoconda/local/etc/gitlab
+bioinfoconda/log/*
+bioinfoconda/gitlab
 miniconda3/*
 prj/*
 !prj/.gitignore
