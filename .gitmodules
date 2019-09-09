@@ -1,4 +1,0 @@
-[submodule "bioinfotree"]
-	path = bioinfotree
-	url = git@gitlab.com:vodkatad/bioinfotree.git
-	branch = xavier
