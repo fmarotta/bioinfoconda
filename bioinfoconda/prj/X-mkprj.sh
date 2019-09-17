@@ -6,6 +6,9 @@
 
 # TODO: use relative paths inside a project.
 
+# trap ctrl-c and call clean_prj()
+trap clean_prj INT
+
 # validate the environment
 if [[ -z "${BIOINFO_ROOT}" ]]; then
     error '${BIOINFO_ROOT} is not defined' 3
@@ -21,6 +24,7 @@ gitlab_config_file="$BIOINFO_ROOT/bioinfoconda/gitlab/gitlab_config"
 
 options=hTGlCir
 longoptions=help,no-templates,no-git,gitlab,no-conda,interactive-conda,remove
+
 
 # Usage string
 read -r -d '' usage << END
