@@ -1,0 +1,1 @@
+.libPaths( c("{{prjpath}}/local/lib/R", .libPaths()) )

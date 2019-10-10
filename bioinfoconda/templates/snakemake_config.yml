@@ -1,0 +1,11 @@
+BIC:
+  ROOT:
+    "{{BIC_ROOT}}/"
+  DATA:
+    "{{BIC_ROOT}}/data/"
+
+PRJ:
+  ROOT:
+    "{{prjpath}}/"
+  DATA:
+    "{{prjpath}}/local/data/"

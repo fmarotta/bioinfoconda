@@ -1,0 +1,9 @@
+name: {{prjname}}
+channels:
+  - https://metachannel.conda-forge.org/defaults,conda-forge,r,bioconda/snakemake,r-base,perl,perl-app-cpanminus
+dependencies:
+  - snakemake
+  - r-base
+  - perl
+  - perl-app-cpanminus
+prefix: {{minicondapath}}/envs/{{prjname}}

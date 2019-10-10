@@ -1,0 +1,8 @@
+# Exclude some hidden files
+.gitignore
+.Rproj.user
+.Rhistory
+.envrc
+# Exclude dataset and local/data (this speeds up the build time)
+dataset/*
+local/data/*

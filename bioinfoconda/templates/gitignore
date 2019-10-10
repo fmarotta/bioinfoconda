@@ -1,0 +1,9 @@
+.RData
+.Rhistory
+.Rproj.user
+dataset
+local/benchmark/*
+local/bin/*
+local/data/*
+local/log/*
+local/tmp/*

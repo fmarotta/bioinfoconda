@@ -1,0 +1,6 @@
+export PATH={{prjpath}}/local/bin:$PATH
+export PERL5LIB={{prjpath}}/local/lib/perl5
+export PERL_CPANM_HOME={{prjpath}}/local/builds/perl5
+export PERL_CPANM_OPT="-l {{prjpath}}/local --no-man-pages --save-dists={{prjpath}}/local/src/perl5"
+export PYTHONPATH={{prjpath}}/local/lib/python
+export R_PROFILE_USER={{prjpath}}/.Rprofile

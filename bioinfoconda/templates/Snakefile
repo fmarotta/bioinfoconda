@@ -1,0 +1,115 @@
+# Main Snakefile
+
+
+# Python modules
+from datetime import datetime
+from snakemake.utils import available_cpu_count, listfiles
+
+
+# Configuration
+configfile: "../local/config/snakemake_config.yml"
+
+
+# Global variables
+CHROMOSOMES = ["chr{n}".format(n=n) for n in list(range(1,23))]
+ALL = ["foo.bed", "bar.png"]
+
+
+# Global functions
+def benchfile(output):
+    return "../local/benchmark/" + output + ".benchmark"
+
+def logfile(output):
+    return "../local/log/" + output + ".log"
+
+
+# Global constraints
+wildcard_constraints:
+    chr = "chr\d+"
+
+
+# Other workflows
+# include: "../local/snakefiles/data_cleaning.smk"
+# include: "../local/snakefiles/models_running.smk"
+# include: "../local/snakefiles/figures.smk"
+
+
+# Send mails (only if the job takes more than {thresh_min} minutes)
+def send_mail(subject, address, log, thresh_min = 10):
+    logfile = open(log, "r").read()
+    times = re.findall("\[(.*)\]", logfile)
+    if len(times) != 0:
+        start_time = datetime.strptime(times[0], "%c")
+        end_time = datetime.strptime(times[len(times)-1], "%c")
+        delta = end_time - start_time
+        if (delta.days * 86400 + delta.seconds) / 60 > thresh_min:
+            shell("mail -s '"+subject+"' '"+address+"' < {log}")
+
+onsuccess:
+    send_mail("Workflow Finished", "username@mailprovider.com", log)
+onerror:
+    send_mail("Snakemake Error", "username@mailprovider.com", log)
+
+
+# Target rules
+rule update:
+    shell:
+        "snakemake -q --forcerun"
+        " $(snakemake -q --list-input-changes --list-code-changes"
+        " --list-params-changes --list-version-changes)"
+
+
+# Utility rules
+rule compress:
+    input:
+        "{file}"
+    output:
+        "{file}.gz"
+    shell:
+        "gzip {input}"
+
+rule tabix:
+    input:
+        "{vcf}"
+    output:
+        "{vcf}.tbi"
+    shell:
+        "tabix {vcf}"
+
+
+# Reports
+MONTH = "july-1969"
+report: f"../local/doc/{MONTH}/workflow.rst"
+
+rule reports:
+    input:
+        workflow = f"../local/doc/{MONTH}/workflow.html",
+        notebook = f"../local/doc/{MONTH}/notebook.html",
+        beamer = f"../local/doc/{MONTH}/beamer.pdf"
+
+rule workflow:
+    input:
+        workflow = "../local/doc/{month}/workflow.rst"
+    output:
+        workflow = "../local/doc/{month}/workflow.html"
+    shell:
+        "snakemake --report {output.workflow}"
+
+rule notebook:
+    input:
+        notebook = "../local/doc/{month}/notebook.Rmd"
+    output:
+        notebook = "../local/doc/{month}/notebook.html"
+    shell:
+        "Rscript --vanilla -e 'rmarkdown::render(\"{input.notebook}\")'"
+
+rule beamer:
+    input:
+        beamer = "../local/doc/{month}/beamer.tex"
+    output:
+        beamer = "../local/doc/{month}/beamer.pdf"
+    params:
+        output_dir = "../local/doc/{month}/",
+        tex_file = "beamer.tex"
+    shell:
+        "pdflatex -output-directory {params.output_dir} {params.tex_file}"

@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# TODO: save templates as files and default environment as yml.
-
-# TODO: improve documentation of -l.
-
-# TODO: use relative paths inside a project.
-
 # trap ctrl-c and call clean_prj()
 trap clean_prj INT
 
@@ -21,9 +15,11 @@ if which conda > /dev/null; then
 fi
 bioinfotreepath="$BIOINFO_ROOT/bioinfotree"
 gitlab_config_file="$BIOINFO_ROOT/bioinfoconda/gitlab/gitlab_config"
+templatespath="$BIOINFO_ROOT/bioinfoconda/templates"
+date=$(date +%Y-%m-%d)
 
-options=hTGlCir
-longoptions=help,no-templates,no-git,gitlab,no-conda,interactive-conda,remove
+options=hTGLCir
+longoptions=help,no-templates,no-git,no-gitlab,no-conda,interactive-conda,remove
 
 
 # Usage string
@@ -33,8 +29,9 @@ Usage: `basename $0` [options] prjname
 Options:
     -T|--no-templates       do not create template Snakefile and
                             Dockerfile.
-    -G|--no-git             do not initialise local git repository.
-    -l|--gitlab             create remote gitlab repository.
+    -G|--no-git             do not initialise local git repository
+                            (implies -L)
+    -L|--no-gitlab          do not create remote repository on GitLab.
     -C|--no-conda           do not create the conda environment.
     -i|--interactive-conda  enable the creation of a customised conda
                             environment.
@@ -46,7 +43,7 @@ Notes:
     This program does the following things:
     1) Creating a directory structure for the project.
     2) Adding default Dockerfile and Snakefile.
-    3) Initialising a git repository.
+    3) Initialising a git repository, both locally and on GitLab.
     4) Creating a conda environment.
     5) Setting up direnv for project environment and libraries.
 
@@ -55,16 +52,19 @@ Notes:
     otherwise the environment will contain R, perl, cpanm and snakemake.
     Use this option only if you know what you are doing.
 
-    The \`-l' option is used to create a remote repository on gitlab
-    and associate it to the local repository. (If you pass this
-    option together with -r, the gitlab repository is deleted; see
-    below.)
+    By default, `basename $0` tries to create a remote repository on
+    GitLab, but this feature requires some configuration before it can
+    be used. In particular, you should first create an account on
+    GitLab, then create a group owned by that account, and finally
+    obtain an API token. See the documentation for the detailed
+    instructions.
 
     To remove a project, use the \`-r' option and provide the
     project name. The entire directory of the project, as well as
-    the related conda environment, if it exists, are eliminated. If
-    you also pass the -l option, the remote gitlab repository is
-    deleted too, if it exists.
+    the related conda environment and the GitLab repository, if they
+    exists, are eliminated. If you also pass the -L option, the remote
+    GitLab repository is not deleted. With -C, the conda environment
+    is not removed.
 
 Reporting bugs:
     federicomarotta AT mail DOT com
@@ -85,36 +85,33 @@ function clean_prj()
     fi
 
     # Remove conda environment
-    if conda info --envs | grep "^$prjname[[:space:]]" > /dev/null; then
-        conda env remove -y -n $prjname
+    if ((conda)); then
+        if conda info --envs | grep "^$prjname[[:space:]]" > /dev/null; then
+            conda env remove -y -n $prjname
+        fi
     fi
 
     # Remove remote gitlab repository
     if ((gitlab)); then
         # Check for invalid gitlab configuration
         if [ -z "$gitlab_username" ] || [ -z "$gitlab_group_id" ] || [ -z "$gitlab_token" ]; then
-            echo "Invalid gitlab configuration. This feature requires 
-            you to provide some configuration parameters; check the 
-            documentation for help."
+            echo "Invalid gitlab configuration. This feature requires you to provide some configuration parameters; check the documentation for help."
             return 4
         fi
-        curl -s --header "Private-Token: $gitlab_token" \
-            -X DELETE "https://gitlab.com/api/v4/projects/$gitlab_username%2F$prjname"
+
+        response=$( curl -s --header "Private-Token: $gitlab_token" \
+            -X DELETE "https://gitlab.com/api/v4/projects/$gitlab_username%2F$prjname" )
+
+        if [ "$?" != "0" ]; then
+            echo "curl had some problems to send your request."
+            return $?
+        fi
+        if [ "$response" != '{"message":"202 Accepted"}' ]; then
+            echo "The GitLab API complained about your request:"
+            echo $response
+            return 8
+        fi
     fi
-
-    #response=$( curl -s --header "Private-Token: $gitlab_token" \
-            #-X DELETE "https://gitlab.com/api/v4/projects/" \
-            #-d "name=$prjname" | jq -r ".message" )
-
-    #if [ "$?" != "0" ]; then
-            #echo "curl had some problems to send your request."
-            #return $?
-    #fi
-    #if [ "$response" != "null" ]; then
-            #echo "The GitLab API complained about your request:"
-            #echo $response
-            #return 8
-    #fi
 
     return 0
 }
@@ -127,6 +124,17 @@ function is_valid_name()
         return 1
     fi
 }
+function sed_template()
+{
+    template=$1
+
+    sed -e "s#{{prjname}}#$prjname#g" \
+        -e "s#{{prjpath}}#$prjpath#g" \
+        -e "s#{{minicondapath}}#$minicondapath#g" \
+        -e "s#{{bioinfotreepath}}#$bioinfotreepath#g" \
+        -e "s#{{BIC_ROOT}}#$BIOINFO_ROOT#g" \
+        $template
+}
 function make_dirs()
 {
     prjpath=$1
@@ -134,6 +142,7 @@ function make_dirs()
     mkdir -p $prjpath/dataset \
         && mkdir -p $prjpath/local/{R,benchmark,bin,builds,config,data,doc,dockerfiles,lib,log,python,snakefiles,src,tmp,condafiles} \
         && mkdir -p $prjpath/local/lib/{perl5,python,R} \
+        && mkdir -p $prjpath/local/doc/{report,paper} \
     || return $?
 
     configure_direnv_local $prjpath
@@ -145,85 +154,17 @@ function create_templates()
     prjpath=$1
     prjname=$(basename $prjpath)
 
-    cat <<- END > $prjpath/local/dockerfiles/Dockerfile
-	# Use the bioinfoconda parent image
-	# NOTE: you should set a version tag!
-	FROM cbuatmbc/bioinfoconda
-	
-	# Copy the project directory into the container
-	# NOTE: remember to add the Snakefiles to the .dockerignore
-	COPY . $prjpath
-	
-	# Create the conda environment from the yml file
-	# NOTE: remember to export the environment before building the 
-	# image, and to edit the following path with the new file.
-	RUN conda env create -f $prjpath/local/condafiles/$prjname.yml
-	
-	RUN chown -R root:bioinfo /bioinfo \
-	    && chmod -R 2777 /bioinfo
-	
-	# Set up the environment
-	ENV PATH="$minicondapath/envs/$prjname/bin:$prjpath/local/bin:\$PATH" \\
-	    PERL5LIB="$prjpath/local/lib/perl:$bioinfotreepath/local/lib/perl" \\
-	    PERL_CPANM_HOME="$prjpath/local/builds/perl5" \\
-	    PERL_CPANM_OPT="-l $prjpath/local --no-man-pages --save-dists=$prjpath/local/src/perl5" \\
-	    PYTHONPATH="$prjpath/local/lib/python:$bioinfotreepath/local/lib/python" \\
-	    R_PROFILE_USER="$prjpath/.Rprofile" \\
-	    CONDA_DEFAULT_ENV="$prjname" \\
-	    CONDA_PREFIX="$minicondapath/envs/$prjname"
-	
-	# Establish the entry point
-	ENTRYPOINT ["$prjpath/local/dockerfiles/docker-entrypoint.sh"]
-	CMD ["snakemake --dag -Tsvg > dag.svg"]
-	END
+    cp $templatespath/Snakefile $prjpath/local/snakefiles/main.smk
+    cp $templatespath/latex.smk $prjpath/local/snakefiles/
+    sed_template $templatespath/snakemake_config.yml > $prjpath/local/config/snakemake_config.yml
 
-    cat <<- END > $prjpath/local/dockerfiles/docker-entrypoint.sh
-	#!/usr/bin/env bash
-	cd $prjpath/dataset
-	eval "\$@"
-	END
+    sed_template $templatespath/Dockerfile > $prjpath/local/dockerfiles/Dockerfile
+    sed_template $templatespath/docker-entrypoint.sh > $prjpath/local/dockerfiles/docker-entrypoint.sh
+    cp $templatespath/dockerignore $prjpath/local/dockerfiles/dockerignore
 
-    cat <<- END > $prjpath/local/dockerfiles/dockerignore
-	# Exclude some hidden files
-	.gitignore
-	.Rproj.user
-	.Rhistory
-	.envrc
-	# Exclude dataset and local/data (this speeds up the build time)
-	dataset/*
-	local/data/*
-	END
+    sed_template $templatespath/notebook.Rmd > $prjpath/local/doc/report/notebook.Rmd
 
-    cat <<- END > $prjpath/local/snakefiles/Snakefile
-	# This is a template Snakefile, change it at will
-
-	# Set the config file
-	configfile: "../local/config/snakemake_config.yml"
-
-	# Define the final targets: all the others depend on them
-	ALL = ["foo.bed", "bar.png"]
-
-	# Run the entire pipeline
-	rule all:
-		input: ALL
-	END
-
-    cat <<- END > $prjpath/local/config/snakemake_config.yml
-	BIOINFOCONDA:
-	    ROOT:
-	        "$BIOINFO_ROOT/"
-	    DATA:
-	        "$BIOINFO_ROOT/data/"
-
-	PRJ:
-	    ROOT:
-	        "$prjpath/"
-	    DATA:
-	        "$prjpath/local/data/"
-	END
-
-    ln -s ../local/snakefiles/Snakefile $prjpath/dataset/Snakefile
-    #ln -s local/dockerfiles/Dockerfile $prjpath/Dockerfile
+    ln -s ../local/snakefiles/main.smk $prjpath/dataset/Snakefile
     ln -s local/dockerfiles/dockerignore $prjpath/.dockerignore
 
     return 0
@@ -233,15 +174,7 @@ function initialise_repo()
     prjpath=$1
 
     git init --shared=group $prjpath > /dev/null || return $?
-	echo .RData > $prjpath/.gitignore
-	echo .Rhistory >> $prjpath/.gitignore
-	echo .Rproj.user >> $prjpath/.gitignore
-	echo dataset/* >> $prjpath/.gitignore
-	echo !dataset/Snakefile >> $prjpath/.gitignore
-	echo local/benchmark/* >> $prjpath/.gitignore
-	echo local/data/* >> $prjpath/.gitignore
-	echo local/log/* >> $prjpath/.gitignore
-	echo local/tmp/* >> $prjpath/.gitignore
+    cp $templatespath/gitignore $prjpath/.gitignore
 
     return 0
 }
@@ -255,9 +188,7 @@ function initialise_gitlab_repo()
 
     # Check for invalid configuration
     if [ -z "$gitlab_username" ] || [ -z "$gitlab_group_id" ] || [ -z "$gitlab_token" ]; then
-        echo "Invalid gitlab configuration. This feature requires you to 
-        provide some configuration parameters; check the documentation 
-        for help."
+        echo "Invalid gitlab configuration. This feature requires you to provide some configuration parameters; check the documentation for help."
         return 4
     fi
 
@@ -304,12 +235,17 @@ function create_default_conda()
 {
     prjpath=$1
     prjname=$(basename $prjpath)
-    date=$(date +%Y-%m-%d)
 
-    conda create -y --name $prjname -c r -c conda-forge -c bioconda r-base r-essentials perl perl-app-cpanminus snakemake \
-        && conda config --file $minicondapath/envs/$prjname/.condarc --add channels r --add channels conda-forge --add channels bioconda \
-		&& conda env export -n $prjname -f $prjpath/local/condafiles/${prjname}_${date}.yml \
-	|| return $?
+    sed_template $templatespath/conda_default_environment.yml > $prjpath/local/condafiles/${prjname}_${date}.yml
+
+    conda env create -f $prjpath/local/condafiles/${prjname}_${date}.yml \
+    && conda env export -n $prjname -f $prjpath/local/condafiles/${prjname}_${date}.yml \
+    || return $?
+
+    # && conda config --file $minicondapath/envs/$prjname/.condarc \
+    #     --add channels r \
+    #     --add channels conda-forge \
+    #     --add channels bioconda \
 
     configure_direnv_conda $prjpath
 
@@ -319,14 +255,13 @@ function create_custom_conda()
 {
     prjpath=$1
     prjname=$(basename $prjpath)
-    date=$(date +%Y-%m-%d)
 
     echo "Complete the command, then press enter to run it:"
     while read -p "conda create -y --name $prjname " args; do
         if ! conda create -y --name $prjname $args; then
             echo "That did not work. Please try again:"
         else
-			conda env export -n $prjname -f $prjpath/local/condafiles/${prjname}_${date}.yml
+            conda env export -n $prjname -f $prjpath/local/condafiles/${prjname}_${date}.yml
             echo "Success!"
             break
         fi
@@ -349,13 +284,8 @@ function configure_direnv_local()
 {
     prjpath=$1
 
-    echo "export PATH=$prjpath/local/bin:\$PATH" > "$prjpath/.envrc"
-    echo "export PERL5LIB=$prjpath/local/lib/perl5" >> "$prjpath/.envrc"
-    echo "export PERL_CPANM_HOME=$prjpath/local/builds/perl5" >> "$prjpath/.envrc"
-    echo "export PERL_CPANM_OPT=\"-l $prjpath/local --no-man-pages --save-dists=$prjpath/local/src/perl5\"" >> "$prjpath/.envrc"
-    echo "export PYTHONPATH=$prjpath/local/lib/python" >> "$prjpath/.envrc"
-    echo "export R_PROFILE_USER=$prjpath/.Rprofile" >> "$prjpath/.envrc"
-    echo ".libPaths( c(\"$prjpath/local/lib/R\", .libPaths()) )" > $prjpath/.Rprofile
+    sed_template $templatespath/envrc > $prjpath/.envrc
+    sed_template $templatespath/Rprofile > $prjpath/.Rprofile
 }
 
 # check syntax and acquire options and arguments
@@ -364,7 +294,7 @@ eval set -- "$PARSER"
 
 templates=1
 git=1
-gitlab=0
+gitlab=1
 conda=1
 interactive=0
 remove=0
@@ -380,10 +310,11 @@ while true; do
             ;;
         -G|--no-git )
             git=0
+            gitlab=0
             shift
             ;;
-        -l|--gitlab )
-            gitlab=1
+        -L|--no-gitlab )
+            gitlab=0
             shift
             ;;
         -C|--no-conda )
@@ -415,7 +346,7 @@ if ((remove)); then
     fi
 fi
 if ! ((git)) && (($gitlab)); then
-    error "-G is not compatible with -l." 5
+    warn "The GitLab repository will not be created. Recall that -G implies -L." 5
 fi
 
 # parse and validate the arguments

@@ -1,0 +1,26 @@
+---
+title: "{{prjname}}"
+subtitle: "Subtitle"
+author: "Charles Darwin"
+output:
+  html_document:
+    code_folding: hide
+    df_print: paged
+    fig_caption: yes
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+date: '`r format(Sys.time(), "%B %d %Y")`'
+---
+
+```{r setup, include = FALSE}
+library(data.table)
+library(ggplot2)
+library(knitr)
+
+opts_chunk$set(fig.width = 8, fig.height = 4.5)
+opts_knit$set(root.dir = normalizePath("{{prjpath}}/dataset/"))
+```
