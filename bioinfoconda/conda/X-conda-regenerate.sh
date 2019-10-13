@@ -2,33 +2,35 @@
 
 # TODO: we should parse all the options with optparse and validate them.
 
-validate the environment
+# validate the environment
 if [[ ! -z "${BIOINFO_ROOT}" ]]; then
-	source $BIOINFO_ROOT/bioinfoconda/lib/bash/bash_functions
+		source $BIOINFO_ROOT/bioinfoconda/lib/bash/bash_functions
 else
 	>&2 echo 'ERROR: ${BIOINFO_ROOT} is not defined'
 	exit 3
 fi
 if [[ -z "${CONDA_PREFIX}" ]]; then
-	error 'You must be inside a conda environment' 3
+        error 'You must be inside a conda environment' 3
 fi
 
-options=c:h
-longoptions=channel:,help
+options=yfmCc:n:p:qkh
+longoptions=help
 
 date=$(date +%Y-%m-%d)
 minicondapath=$(conda info --base)
 prjname=$(basename ${CONDA_PREFIX})
 prjpath=${BIOINFO_ROOT}/prj/$prjname
+env_file=$prjpath/local/condafiles/${prjname}_${date}.yml
+history_file=${CONDA_PREFIX}/conda-meta/history
 argv=$@
 
 # Usage string
 read -r -d '' usage << END
 Usage:
-        X-conda install -c CHANNEL PACKAGE1 PACKAGE2 ...
+    `basename $0` -c CHANNEL PACKAGE1 PACKAGE2 ...
 
 More in detail:
-    `basename $0` install [-y] [--dry-run] [-f] [--no-deps] [-m]
+    `basename $0` [-y] [--dry-run] [-f] [--no-deps] [-m]
             [-C] [--use-local] [--offline] [--no-pin] [-c CHANNEL]
             [--override-channels] [-n ENVIRONMENT | -p PATH] [-q]
             [--copy] [-k] [--update-dependencies]
@@ -66,11 +68,7 @@ while true; do
 			echo "$usage"
 			exit 0
 			;;
-		-c|--channel )
-			shift
-			channels+=("$1")
-			;;
-		-- )
+        -- )
 			shift
 			break
 			;;
@@ -84,16 +82,32 @@ done
 # Export the environment as it is now
 X-conda-export
 
-# Parse the command line options to obtain the list of channels and 
-# packages
-for p in "$@"; do
-	constraints+=$(echo "$p" | sed 's/[<>!= ].*//')
-done
-constraints=$(echo "$constraints" | sed 's/ /,/g')
-channels=$(echo "${channels[@]}" | sed 's/ /,/g')
+# Get a list of channels and update_specs
+info "Getting the channels and packages of the environment..."
+channels="-c $(X-conda-get-channels -f $env_file | sed 's/ / -c /g')"
+specs=$(X-conda-get-specs -f $history_file)
 
-# Install using metachannel
-conda install \
-	-c "https://metachannel.conda-forge.org/$channels/$constraints" "$@"
+# Recreate the environment
+info "Deactivating environment..."
+source "$minicondapath/etc/profile.d/conda.sh"
+conda deactivate
 
-info "All done."
+info "Running: conda env remove -n $prjname"
+conda env remove -y -q -n $prjname
+
+info "Running: conda create --name $prjname $channels $argv $specs"
+conda create -y --name $prjname $channels $argv $specs
+
+if [[ $? -eq 0 ]]; then
+	# info "Reactivating environment..."
+	info "All done."
+else
+	error "Sorry, that did not work. You can regenerate the environment as it was through $env_file." 9
+fi
+
+# It's not necessary to reactivate the environment, because it was only 
+# deactivated for the shell opened by this script; activating the 
+# environment here would be pointless.
+
+# source activate $prjname
+# info "All done."

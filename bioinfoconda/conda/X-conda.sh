@@ -21,8 +21,12 @@ Usage:
 Commands:
 	The command can be one of the following:
 
-	* install:	brute-force installation of packages
-	* export:	save the environment to a file
+	* export:		save the environment to a file
+	* install:		quick installation using metachannel
+	* regenerate:	brute-force installation of packages
+
+Notes:
+	`basename $0` is simply a wrapper around the original conda.
 
 Reporting bugs:
 	federicomarotta AT mail DOT com
@@ -33,10 +37,12 @@ if [[ $# -eq 0 ]]; then
         error "$usage" 1
 elif [ $1 == "-h" ]; then
 	echo "$usage"
-elif [ $1 == "install" ]; then
-	X-conda-install "${@:2}"
 elif [ $1 == "export" ]; then
 	X-conda-export "${@:2}"
+elif [ $1 == "install" ]; then
+	X-conda-install "${@:2}"
+elif [ $1 == "regenerate" ]; then
+	X-conda-regenerate "${@:2}"
 else
 	error "$usage" 1
 fi
