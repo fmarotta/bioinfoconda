@@ -14,9 +14,6 @@ if [[ -z "${CONDA_PREFIX}" ]]; then
 fi
 
 date=$(date +%Y-%m-%d)
-minicondapath=$(conda info --base)
-prjname=$(basename ${CONDA_PREFIX})
-prjpath=${BIOINFO_ROOT}/prj/$prjname
 argv=$@
 
 # Usage string
@@ -31,9 +28,9 @@ Options:
 Notes:
     This program is simply a wrapper around the regular conda, but it
     allows to painlessly use conda metachannel without having to think
-    about the channel url.
+	about the channel url.
 
-    In addition to the regular conda, X-conda install also exports the
+	In addition to the regular conda, X-conda install also exports the
     environment after the installation.
 
 Examples:
@@ -86,12 +83,14 @@ done
 constraints=$(echo "${constraints[@]}" | sed 's/ /,/g')
 channels=$(echo "${channels[@]}" | sed 's/ /,/g')
 
-# Install using metachannel
+# Try to install the packages using a metachannel
 conda install \
 	"${opts[@]}" \
 	-c "https://metachannel.conda-forge.org/$channels/$constraints" "$@"
+ret=$?
 
 # Export the environment with the new package
-X-conda-export
-
-info "All done."
+if [ $ret -eq 0 ]; then
+	X-conda-export
+	info "All done."
+fi
