@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# TODO: we should parse all the options with optparse and validate them.
+# TODO: add the other conda options to the options string
 
-validate the environment
+# Validate the environment
 if [[ ! -z "${BIOINFO_ROOT}" ]]; then
 	source $BIOINFO_ROOT/bioinfoconda/lib/bash/bash_functions
 else
@@ -13,9 +13,6 @@ if [[ -z "${CONDA_PREFIX}" ]]; then
 	error 'You must be inside a conda environment' 3
 fi
 
-options=c:h
-longoptions=channel:,help
-
 date=$(date +%Y-%m-%d)
 minicondapath=$(conda info --base)
 prjname=$(basename ${CONDA_PREFIX})
@@ -25,43 +22,40 @@ argv=$@
 # Usage string
 read -r -d '' usage << END
 Usage:
-        X-conda install -c CHANNEL PACKAGE1 PACKAGE2 ...
-
-More in detail:
-    `basename $0` install [-y] [--dry-run] [-f] [--no-deps] [-m]
-            [-C] [--use-local] [--offline] [--no-pin] [-c CHANNEL]
-            [--override-channels] [-n ENVIRONMENT | -p PATH] [-q]
-            [--copy] [-k] [--update-dependencies]
-            [--no-update-dependencies] [--channel-priority]
-            [--no-channel-priority] [--clobber]
-            [--show-channel-urls] [--no-show-channel-urls]
-            [--download-only] [--json] [--debug] [--verbose]
-            [PACKAGE1 [PACKAGE2 [...]]]
+    X-conda install -c CHANNEL PACKAGE1 PACKAGE2 ...
 
 Options:
-    For an explanation of the options, see the usage of \`conda
-    create'.
+    As of now, only -h|--help and -c|--channel are supported; please
+    report a bug if you see the message: "unrecognized option".
 
 Notes:
-    This program removes and recreate the current conda environment.
-    It is the heavy artillery to be deployed when "conda install"
-    fails. As specified in the documentation of conda, the
-    installation of all the packages at once reduces the chances
-    of conflicts.
- 
-    If you do not provide any option, the environment will be
-    simply regenerated; this might be useful to solve some
-    conda-related problems.
+    This program is simply a wrapper around the regular conda, but it
+    allows to painlessly use conda metachannel without having to think
+    about the channel url.
+
+    In addition to the regular conda, X-conda install also exports the
+    environment after the installation.
+
+Examples:
+    1) X-conda install -c r "r-essentials>=3.5.1"
+       Will be translated to:
+       conda install -c https://metachannel.conda-forge.org/r/r-essentials r-essentials>=3.5.1
+
+    2) X-conda install -c conda-forge -c bioconda keras snakemake==5.6.0
+       Will be translated to:
+       conda install -c https://metachannel.conda-forge.org/conda-forge,bioconda/keras,snakemake keras snakemake==5.6.0
 
 Reporting bugs:
     federicomarotta AT mail DOT com
 END
 
+options=c:h
+longoptions=channel:,help
 PARSER=$(getopt --options=$options --longoptions=$longoptions --name "$0" -- "$@")
 eval set -- "$PARSER"
 
 while true; do
-	case "$1" in
+    case "$1" in
 		-h|--help )
 			echo "$usage"
 			exit 0
@@ -75,25 +69,29 @@ while true; do
 			break
 			;;
 		* )
-            # For now we do not exclude any argument
-            shift
+            # Save all the other options to pass them to conda
+            # (This will work when the other options will be added to 
+            # the options string)
+            opts+=("$1")
 			;;
 	esac
+	shift
 done
-
-# Export the environment as it is now
-X-conda-export
 
 # Parse the command line options to obtain the list of channels and 
 # packages
 for p in "$@"; do
-	constraints+=$(echo "$p" | sed 's/[<>!= ].*//')
+    constraints+=($(echo "$p" | sed 's/[<>!= ].*//'))
 done
-constraints=$(echo "$constraints" | sed 's/ /,/g')
+constraints=$(echo "${constraints[@]}" | sed 's/ /,/g')
 channels=$(echo "${channels[@]}" | sed 's/ /,/g')
 
 # Install using metachannel
 conda install \
+	"${opts[@]}" \
 	-c "https://metachannel.conda-forge.org/$channels/$constraints" "$@"
+
+# Export the environment with the new package
+X-conda-export
 
 info "All done."

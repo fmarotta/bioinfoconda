@@ -29,20 +29,13 @@ read -r -d '' usage << END
 Usage:
     `basename $0` -c CHANNEL PACKAGE1 PACKAGE2 ...
 
-More in detail:
-    `basename $0` [-y] [--dry-run] [-f] [--no-deps] [-m]
-            [-C] [--use-local] [--offline] [--no-pin] [-c CHANNEL]
-            [--override-channels] [-n ENVIRONMENT | -p PATH] [-q]
-            [--copy] [-k] [--update-dependencies]
-            [--no-update-dependencies] [--channel-priority]
-            [--no-channel-priority] [--clobber]
-            [--show-channel-urls] [--no-show-channel-urls]
-            [--download-only] [--json] [--debug] [--verbose]
-            [PACKAGE1 [PACKAGE2 [...]]]
+`basename $0` will recreate the current conda environment with all the 
+previous packages PLUS the ones specified in the command line.
 
 Options:
     For an explanation of the options, see the usage of \`conda
-    create'.
+    create'. Currently, not all of them may be supported; please
+    report a bug if you get the message: "unrecognized option".
 
 Notes:
     This program removes and recreate the current conda environment.
