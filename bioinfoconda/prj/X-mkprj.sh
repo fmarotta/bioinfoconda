@@ -154,16 +154,23 @@ function create_templates()
     prjpath=$1
     prjname=$(basename $prjpath)
 
+	# Snakemake templates
     cp $templatespath/Snakefile $prjpath/local/snakefiles/main.smk
     cp $templatespath/latex.smk $prjpath/local/snakefiles/
     sed_template $templatespath/snakemake_config.yml > $prjpath/local/config/snakemake_config.yml
 
+	# Docker templates
     sed_template $templatespath/Dockerfile > $prjpath/local/dockerfiles/Dockerfile
     sed_template $templatespath/docker-entrypoint.sh > $prjpath/local/dockerfiles/docker-entrypoint.sh
     cp $templatespath/dockerignore $prjpath/local/dockerfiles/dockerignore
 
+	# Rmarkdown templates
     sed_template $templatespath/notebook.Rmd > $prjpath/local/doc/report/notebook.Rmd
 
+	# Editorconfig
+	cp $templatespath/editorconfig $prjpath/.editorconfig
+
+	# Symbolic links
     ln -s ../local/snakefiles/main.smk $prjpath/dataset/Snakefile
     ln -s local/dockerfiles/dockerignore $prjpath/.dockerignore
 
