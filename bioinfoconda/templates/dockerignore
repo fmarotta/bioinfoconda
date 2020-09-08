@@ -1,4 +1,5 @@
 # Exclude some hidden files
+.git
 .gitignore
 .Rproj.user
 .Rhistory

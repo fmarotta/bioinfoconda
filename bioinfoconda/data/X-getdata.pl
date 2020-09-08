@@ -32,7 +32,7 @@ Usage: $NAME [options] URL
 Options:
 	-R|--reject=pattern		Reject files matching pattern. (Not yet implemented)
 	-f|--fix-index			Attempt to interactively fix the data index
-	-h|--help				Print this message.
+	-h|--help			Print this message.
 
 Notes:
 	URL is the Universal Resource Location of the file to download.

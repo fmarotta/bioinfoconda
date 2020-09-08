@@ -1,1 +1,5 @@
-bioinfoconda/docker/dockerignore
+data
+bioinfoconda
+docker
+miniconda3
+prj

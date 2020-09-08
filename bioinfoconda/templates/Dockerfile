@@ -27,4 +27,4 @@ ENV PATH="{{minicondapath}}/envs/{{prjname}}/bin:{{prjpath}}/local/bin:\$PATH" \
 
 # Establish the entry point
 ENTRYPOINT ["{{prjpath}}/local/dockerfiles/docker-entrypoint.sh"]
-CMD ["snakemake --dag -Tsvg > dag.svg"] 
+CMD ["snakemake --dag | dot -Tsvg > dag.svg"]
