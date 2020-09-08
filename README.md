@@ -1,7 +1,7 @@
 # Bioinfoconda
 
-A framework to manage workflows for medium-size data analysis projects, 
-based on Conda environments and easily exportable to Docker images.
+An environment to manage workflows for data analysis projects, based on 
+Conda environments and easily exportable to Docker images.
 
 In Bioinfoconda, each project has its own directory, conda environment, 
 local libraries and executables. As soon as you `cd` into the project 
@@ -31,12 +31,16 @@ system)
     * Instructions [here](https://docs.docker.com/install/)
 
 5. (Optional) Install Bioinfotree
+    * [Bioinfotree](https://bitbucket.org/irccit/bit_public/src/ircc_common/) 
+    is a set of bioinformatic tools
+    * If you know about Bioinfotree at all, you'll probably also know 
+    how to install it
 
 5. Set up the environment
     * Set BIOINFO\_ROOT to the path where you cloned the repository
     * Add bioinfoconda's executables to your PATH
     * Add miniconda's executables to your PATH
-	* Make sure you have LC\_ALL set
+    * Make sure you have LC\_ALL set
     * Configure the bashrc so that direnv works
     * Add bioinfotree's executables to your PATH
     * Add bioinfotree's python and perl libraries to the environment
@@ -131,13 +135,13 @@ easier, we created the `X-getdata` command, whose syntax is
 X-getdata URL
 ```
 
-It supports http, ftp and rsync protocols and is able to download a 
-directory recursively, as well as to download only those files which 
-match a pattern. Third-party data sets are usually well documented and 
-structured, therefore it makes sense to maintain their original 
-structure when downloading them; `X-getdata` automatically suggests a 
-possible location where to save the downloads: for instance, if the URL 
-is http://foo.com/boo/bar/baz.vcf.gz, the suggestion will be 
+It supports http, ftp, rsync, and now also ssh protocols, and it is able 
+to download a directory recursively, as well as to download only those 
+files which match a pattern. Third-party data sets are usually well 
+documented and structured, therefore it makes sense to maintain their 
+original structure when downloading them; `X-getdata` automatically 
+suggests a possible location where to save the downloads: for instance, 
+if the URL is http://foo.com/boo/bar/baz.vcf.gz, the suggestion will be 
 foo/boo/bar/baz.vcf.gz. If you are not satisfied with the suggestion, 
 you can manually override it. Files are downloaded inside the 
 *$BIOINFO\_ROOT/data* directory.
@@ -145,7 +149,7 @@ you can manually override it. Files are downloaded inside the
 For each downloaded file, `X-getdata` creates an entry in a log file, so 
 that it will be easy to find out who downloaded a file and from where.
 
-### Working on a Project
+### Working on a Project (simplified)
 
 When working on a project it is common to require a specific program to 
 perform some operations. There are two options: either an existing 
@@ -184,13 +188,16 @@ Directory   | Purpose
 ---         | ---
 snakefiles  | snakefiles for snakemake; they are symlinked in *dataset* 
 dockerfiles | dockerfile which can be symlinked in the project's home
-ymlfiles    | conda yml file with the list of programs in the environment
+condafiles  | conda yml file with the list of programs in the environment
+benchmark	| benchmark of rules, scripts, or whole pipelines
 config      | config files for snakemake and other config files
 src         | sources of programs written by you or downloaded
 bin         | symlinks to the executables of programs whose source is in src
 lib         | programs that are not executed but that contain functions called by other programs
 builds      | used to builds programs from source
 data        | data sets that are used only for that project
+R			| R scripts
+python		| python scripts
 doc         | documentation, draft of the paper
 
 ### Example
@@ -417,9 +424,34 @@ variable.
 
 **Running the workflow** TODO
 
+### Working on a Project (advanced)
+
+Having one conda environment per project is great for small pipelines, 
+but as soon as the number of installed packages increases, the 
+resolution of the environment starts to become slower than time near a 
+black hole. Furthermore, it seems unreasonable to bloat the project 
+environment with a package that is needed for just one rule; not to 
+mention that for bioconductoR packages the resolution is often 
+impossible.
+
+In order to avoid the spaghettification of the brain (a concrete risk 
+when waiting for the resolution of an environment), it is recommended to 
+create multiple conda environments for each project: one 'main' 
+environment with the indispensable tools (e.g. Snakemake, R, Rstudio), 
+and then other sub-environments, one for each part of the analysis. 
+Users are encouraged to use their best judgement when it comes to 
+determining how many parts a project has. But for example, one part 
+could be labelled 'alignment', and it would contain all the software 
+required for the alignment; another part could be called 'quality 
+control'; yet another could be 'statistical analysis', or 'plots'. 
+Snakemake makes it easy to use the appropriate conda environment for 
+each rule: check it out 
+[here](https://snakemake.readthedocs.io/en/stable/snakefiles/deployment.html).
+
 #### Best practices
 
-* Always use relative links
+* Always use relative links to access project-related files from within 
+the project
 
 #### Extra: R Studio integration
 
@@ -441,6 +473,3 @@ TODO.
 
 * Config file with default conda packages and default directories
 
-#### FIXME
-
-Apparently, at the moment everything works.
