@@ -514,6 +514,7 @@ machine that can run everywhere.
 
 1. There is a default *local/docker/Dockerfile* inside each project, but 
    you will need to do some editing:
+
    * the ymlfile path must be changed to match the one you have exported 
    in step 2;
    * if you manually created new environmental variables you have to add 
@@ -561,6 +562,7 @@ machine that can run everywhere.
    reserve a slot. You will need to choose which node(s) to reserve and 
    then estimate the time it will take to compute your pipeline using 
    the chosen resources. Tips:
+
    * If you book 2 light nodes, you don't have 48 cores; you will have 
    to run 2 separate containers, each with 24 cores.
    * The reservation can be updated (or deleted) only before its 
@@ -579,28 +581,35 @@ machine that can run everywhere.
    your local machine, the target is 
    */bioinfo/prj/project_name/dataset/analysis/correlation.tsv*, while
    the *input* files are located under four different directories:
+
    * */bioinfo/data/ucsc/chromosomes*,
    * */bioinfo/prj/project_name/local/data/annotation*,
    * */bioinfo/prj/otherproject/dataset/expression*,
    * */bioinfo/prj/project_name/dataset/alignments*
+
    You may need the last directory if, for instance, you have already 
    run the alignment rules on your local machine, and now you just need 
    to compute the correlation, without re-doing the alignment. In this 
    situation, my reccommendation is to do as follows.
    From occam, `cd` into */scratch/home/user/project_name* and create 
    four directories:
+
    * `mkdir chromosomes`,
    * `mkdir annotation`,
    * `mkdir expression`,
    * `mkdir -p dataset/aligments`.
+
    Then, use `rsync` (or your favorite equivalent tool) to copy the 
    files from your local machine to occam:
+
    * `rsync -a user@localmachineIP:/bioinfo/data/ucsc/chromosomes/* chromosomes`
    * `rsync -a user@localmachineIP:/bioinfo/prj/project_name/local/data/annotation/* annotation`
    * `rsync -a user@localmachineIP:/bioinfo/otherproject/dataset/expression/* expression`
    * `rsync -a user@localmachineIP:/bioinfo/prj/project_name/dataset/alignments/* dataset/alignments`
+
    Lastly, copy the master Snakefile (this has to be done even if you 
    don't mount any volume):
+
    * `rsync -a user@localmachineIP:/bioinfo/prj/project_name/dataset/Snakefile dataset/`
 
 1. Test the image on occam, mounting all the volumes. In a sense, this 
