@@ -26,21 +26,13 @@ Options:
     report a bug if you see the message: "unrecognized option".
 
 Notes:
-    This program is simply a wrapper around the regular conda, but it
-    allows to painlessly use conda metachannel without having to think
-	about the channel url.
-
-	In addition to the regular conda, X-conda install also exports the
-    environment after the installation.
+    This program is simply a wrapper around the regular conda, but
+    in addition it also exports the environment after the installation.
 
 Examples:
     1) X-conda install -c r "r-essentials>=3.5.1"
-       Will be translated to:
-       conda install -c https://metachannel.conda-forge.org/r/r-essentials r-essentials>=3.5.1
 
     2) X-conda install -c conda-forge -c bioconda keras snakemake==5.6.0
-       Will be translated to:
-       conda install -c https://metachannel.conda-forge.org/conda-forge,bioconda/keras,snakemake keras snakemake==5.6.0
 
 Reporting bugs:
     federicomarotta AT mail DOT com
@@ -51,6 +43,7 @@ longoptions=channel:,help
 PARSER=$(getopt --options=$options --longoptions=$longoptions --name "$0" -- "$@")
 eval set -- "$PARSER"
 
+channels=""
 while true; do
     case "$1" in
 		-h|--help )
@@ -59,7 +52,7 @@ while true; do
 			;;
 		-c|--channel )
 			shift
-			channels+=("$1")
+            channels+="-c $1 "
 			;;
 		-- )
 			shift
@@ -75,18 +68,8 @@ while true; do
 	shift
 done
 
-# Parse the command line options to obtain the list of channels and 
-# packages
-for p in "$@"; do
-    constraints+=($(echo "$p" | sed 's/[<>!= ].*//'))
-done
-constraints=$(echo "${constraints[@]}" | sed 's/ /,/g')
-channels=$(echo "${channels[@]}" | sed 's/ /,/g')
-
 # Try to install the packages using a metachannel
-conda install \
-	"${opts[@]}" \
-	-c "https://metachannel.conda-forge.org/$channels/$constraints" "$@"
+mamba install $channels "${opts[@]}" "$@"
 ret=$?
 
 # Export the environment with the new package

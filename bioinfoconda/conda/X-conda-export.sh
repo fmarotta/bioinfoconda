@@ -29,7 +29,7 @@ longoptions=help
 date=$(date +%Y-%m-%d)
 prjname=$(basename ${CONDA_PREFIX})
 prjpath=${BIOINFO_ROOT}/prj/$prjname
-env_file=$prjpath/local/condafiles/${prjname}_${date}.yml
+env_file="$(find $prjpath -maxdepth 2 -type d -name condafiles | head -n 1)/${prjname}_${date}.yml"
 
 # Parse the options
 PARSER=$(getopt --options=$options --longoptions=$longoptions --name "$0" -- "$@")
@@ -54,10 +54,10 @@ done
 
 # Start the real script
 info "Exporting environment..."
-conda env export -n $prjname -f $env_file
+mamba env export -n $prjname -f $env_file
 
-if [[ $? == 0 ]]; then
-	info "Done. The environment file is $env_file."
+if [[ $? -eq 0 ]]; then
+    info "Done. The environment file is $env_file"
 else
 	error "Something went wrong" $?
 fi

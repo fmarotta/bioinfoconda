@@ -22,6 +22,10 @@ it under your home directory.
    have everything in a place, install it under bioinfoconda)
     * Follow the instructions [here](https://conda.io/docs/user-guide/install/index.html)
 
+2. Install [mamba](https://github.com/mamba-org/mamba) in the base conda 
+environment.
+    * `conda install -c conda-forge mamba`
+
 3. Install direnv (if you do not have rootly powers, you can install it 
    under bioinfoconda; there probably is a packaged version for your 
 system)
@@ -68,8 +72,8 @@ export BIOINFO_ROOT="/bioinfoconda"
 export PATH="$BIOINFO_ROOT/bioinfoconda/bin:/bioinfoconda/miniconda/bin:$PATH"
 # If you have bioinfotree add also the following three exports
 # export PATH="$BIOINFO_ROOT/bioinfotree/local/bin:$PATH"
-# export PYTHONPATH="$BIOINFO_ROOT/bioinfotree/local/lib/python"
-# export PERL5LIB="$BIOINFO_ROOT/bioinfotree/local/lib/perl"
+# export PYTHONPATH="$BIOINFO_ROOT/bioinfotree/local/lib/python:$PYTHONPATH"
+# export PERL5LIB="$BIOINFO_ROOT/bioinfotree/local/lib/perl:$PERL5LIB"
 
 # Configure direnv
 eval "$(direnv hook bash)"
@@ -149,26 +153,54 @@ you can manually override it. Files are downloaded inside the
 For each downloaded file, `X-getdata` creates an entry in a log file, so 
 that it will be easy to find out who downloaded a file and from where.
 
+### Using conda
+
+Conda is both an environment manager and a package manager, meaning
+that it allows you to install package and to create environments to
+keep groups of packages separate from each other. Bioinfoconda creates
+one environment for each project so as to ensure reproducibility.
+The problem with conda is that it tends to become much slower as the
+size of an environment increases; this has led to the development of
+[mamba](https://github.com/mamba-org/mamba), a drop-in replacement for
+conda which relies on a much faster library for resolving dependencies
+and on parallellisation.
+
+Bioinfoconda internally uses mamba to create the environments and it
+provides a wrapper around it for convenience. Instead of using `conda`
+or `mamba` directly, we recommend to use `X-conda` to install packages.
+This usage is consistent with the other X- commands, and it will make
+more difficult to accidentally use conda instead of mamba. Thus, to 
+install a new package, use `X-conda install -c <channel> <pkgname>` 
+instead of `conda install -c <channel> <pkgname>`.
+
+Furthermore, you can use X-conda also to export or regenerate an 
+environment. For exporting, write `X-conda export`, and a list of all 
+the installed packages will be dumped into a file under the `condafiles` 
+directory. Regenerating an environment means to create a brand new 
+environment with the same name as the old one and re-install all the 
+packages at once; this can help resolve conflicts when the situation is 
+desperate. Check out `X-conda regenerate --help` for the details.
+
 ### Working on a Project (simplified)
 
-When working on a project it is common to require a specific program to 
-perform some operations. There are two options: either an existing 
-program can be downloaded or a new program is to be written. In the 
-former case, the first thing to try is to install it with conda, i.e. 
-`conda install -c channel package`. (In a new project, by default the 
-only packages installed in the conda environment are snakemake, R and 
-perl.) If the package is not contained in conda's repositories, you can 
-manually download it by following the maintainer's instructions. Each 
-new project is created with a predefined set of subdirectories, and you 
-should install your programs in one of those; see below for a 
-description of the intended purpose of each subdirectory. Always 
-remember to check whether you need to add the executables to the PATH or 
-the libraries to your environment. In such cases, you have to edit the 
-project's .envrc, located in the project's home, so that direnv is aware 
-of your configuration. When you need to write your own program you 
-should also put it in one of the project's subdirectories and make sure 
-that executables and libraries are added to the environment. An 
-important thing is that the shebang should be '#!/usr/bin/env XXX', not 
+When working on a project it is common to require a specific program
+to perform some operations. There are two options: either an existing
+program can be downloaded or a new program is to be written. In the
+former case, the first thing to try is to install it with conda, i.e.
+`X-conda install -c channel package`. (In a new project, by default the
+only packages installed in the conda environment are snakemake, r, and
+perl) If the package is not contained in conda's repositories, you
+can manually download it by following the maintainer's instructions.
+Each new project is created with a predefined set of subdirectories,
+and you should install your programs in one of those; see below for
+a description of the intended purpose of each subdirectory. Always
+remember to check whether you need to add the executables to the PATH
+or the libraries to your environment. In such cases, you have to edit
+the project's .envrc, located in the project's home, so that direnv is
+aware of your configuration. When you need to write your own program
+you should also put it in one of the project's subdirectories and make
+sure that executables and libraries are added to the environment. An
+important thing is that the shebang should be '#!/usr/bin/env XXX', not
 simply '#!/usr/bin/XXX'.
 
 Each project is created with a specific directory structure, which will 
@@ -202,9 +234,9 @@ doc         | documentation, draft of the paper
 
 ### Example
 
-In order to fix these ideas, let us see an example. Say we want to 
-analyse the genome of some microbes that our colleague has just 
-sequenced: we will map the reads to a reference genome and then call the 
+In order to fix these ideas, let us see an example. Say that we want
+to analyse the genome of some microbes that our colleague has just
+sequenced: we will map the reads to a reference genome and then call the
 variants.
 
 **Creating the project** To create the project, we run `X-mkprj 
@@ -251,7 +283,7 @@ rule bwa_map:
 **Getting software -- conda** At this stage we still don't have the bwa 
 and samtools programs, so we need to download them. The first thing to 
 do is a search in anaconda repositories to see whether bwa is packaged; 
-it turns out that it is and we can install it with `conda install -c 
+it turns out that it is and we can install it with `X-conda install -c 
 bioconda bwa`. A very useful site is [anaconda 
 cloud](https://anaconda.org), which not only lets you search anaconda 
 packages, it also tells you which command to run if you want to install 
@@ -260,9 +292,9 @@ page](https://anaconda.org/bioconda/samtools)).
 
 **Getting software -- manual compilation** Similarly, samtools is 
 packaged in anaconda repositories, so we could install it as easily as 
-typing `conda install -c bioconda samtools`; nevertheless, for the sake 
-of this example, let us install it manually. We browse the web and find 
-the samtools page at http://www.htslib.org/download/; we want to 
+typing `X-conda install -c bioconda samtools`; nevertheless, for the 
+sake of this example, let us install it manually. We browse the web and 
+find the samtools page at http://www.htslib.org/download/; we want to 
 download the source code in the project's local/src, then install 
 samtools under local/builds, and finally copy the binary files in 
 local/bin. We run:
@@ -343,7 +375,7 @@ example of how to download a Perl module, Spreadsheet::ParseExcel. Its
 location should be under local/lib/perl5 (recall that by library we mean 
 a program which is not executed directly but it is called from other 
 perl scripts). Again, first we search anaconda cloud for a packaged 
-version; luckily we find it, so we can run `conda install -c biobuilds 
+version; luckily we find it, so we can run `X-conda install -c biobuilds 
 perl-spreadsheet-parseexcel`. However, for the sake of this example, we 
 will not do it; instead, we are going to install it manually. For perl 
 modules, there are actually three options: (a) the first is to download 
@@ -367,7 +399,7 @@ installing the interpreter of a programming language such as Perl, we
 should install the associated package manager as well. In this case, 
 since we use Perl, we install perl and cpanminus. For instance, if we 
 program in Node.js we would install node and npm. Of course when we say 
-install we actually mean `conda install`.
+install we actually mean `X-conda install`.
 
 For python modules, it suffices to run `pip install modulename`; they 
 are handled by conda itself. For R modules (after making sure that the 
@@ -381,7 +413,7 @@ biocLite(c("pkgname1", "pkgname2"))
 ```
 
 This should cover most common cases; if you cannot install your module 
-in any of those ways, probably you had better write your own library :) 
+in any of those ways, probably you'd better write your own library :) 
 
 **Getting software -- writing it** Now that we have our module, we can 
 start writing our own script to parse the excel file. We start editing 
@@ -445,7 +477,7 @@ could be labelled 'alignment,' and it would contain all the software
 required for the alignment; another part could be called 'quality 
 control;' yet another could be 'statistical analysis,' or 'plots.' 
 Snakemake makes it easy to use the appropriate conda environment for 
-each rule: check it out 
+each rule: check this out 
 [here](https://snakemake.readthedocs.io/en/stable/snakefiles/deployment.html).
 
 #### Best practices
@@ -669,7 +701,5 @@ machine that can run everywhere.
 * Possibly send mails to bioinfoadmin
 
 * Make the names coherent (bioinfo vs bioinfoconda...)
-
-* Config file with default conda packages and default directories
 
 * Document the templates

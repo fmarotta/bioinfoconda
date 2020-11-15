@@ -20,7 +20,7 @@ date=$(date +%Y-%m-%d)
 minicondapath=$(conda info --base)
 prjname=$(basename ${CONDA_PREFIX})
 prjpath=${BIOINFO_ROOT}/prj/$prjname
-env_file=$prjpath/local/condafiles/${prjname}_${date}.yml
+env_file="$(find $prjpath -maxdepth 2 -type d -name condafiles | head -n 1)/${prjname}_${date}.yml"
 history_file=${CONDA_PREFIX}/conda-meta/history
 argv=$@
 
@@ -74,6 +74,9 @@ done
 
 # Export the environment as it is now
 X-conda-export
+if [[ $? -ne 0 ]]; then
+    error "Couldn't expor the environment" 1
+fi
 
 # Get a list of channels and update_specs
 info "Getting the channels and packages of the environment..."
@@ -88,14 +91,14 @@ conda deactivate
 info "Running: conda env remove -n $prjname"
 conda env remove -y -q -n $prjname
 
-info "Running: conda create --name $prjname $channels $argv $specs"
-conda create -y --name $prjname $channels $argv $specs
+info "Running: mamba create --name $prjname $channels $argv $specs"
+mamba create -y --name $prjname $channels $argv $specs
 
 if [[ $? -eq 0 ]]; then
 	# info "Reactivating environment..."
 	info "All done."
 else
-	error "Sorry, that did not work. You can regenerate the environment as it was through $env_file." 9
+    error "Sorry, that did not work. You can regenerate the environment as it was through $env_file" 9
 fi
 
 # It's not necessary to reactivate the environment, because it was only 

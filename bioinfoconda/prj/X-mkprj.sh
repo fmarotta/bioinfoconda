@@ -245,8 +245,8 @@ function create_default_conda()
 
     sed_template $templatespath/conda_default_environment.yml > $prjpath/local/condafiles/${prjname}_${date}.yml
 
-    conda env create -f $prjpath/local/condafiles/${prjname}_${date}.yml \
-    && conda env export -n $prjname -f $prjpath/local/condafiles/${prjname}_${date}.yml \
+    mamba env create -f $prjpath/local/condafiles/${prjname}_${date}.yml \
+    && mamba env export -n $prjname -f $prjpath/local/condafiles/${prjname}_${date}.yml \
     || return $?
 
     # && conda config --file $minicondapath/envs/$prjname/.condarc \
@@ -265,10 +265,10 @@ function create_custom_conda()
 
     echo "Complete the command, then press enter to run it:"
     while read -p "conda create -y --name $prjname " args; do
-        if ! conda create -y --name $prjname $args; then
+        if ! mamba create -y --name $prjname $args; then
             echo "That did not work. Please try again:"
         else
-            conda env export -n $prjname -f $prjpath/local/condafiles/${prjname}_${date}.yml
+            mamba env export -n $prjname -f $prjpath/local/condafiles/${prjname}_${date}.yml
             echo "Success!"
             break
         fi
