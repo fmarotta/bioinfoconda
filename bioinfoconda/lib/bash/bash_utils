@@ -56,7 +56,14 @@ function cdp
 				elif [ $1 == "." ]; then
 						if extract_prj $PWD > /dev/null; then
 								cur_prj=`extract_prj $PWD`
-								cd $prj_root/$cur_prj/dataset
+                                if [ -d "$prj_root/$cur_prj/dataset" ]; then
+                                    main_dir="$prj_root/$cur_prj/dataset"
+                                elif [[ $(find $prj_root/$cur_prj -maxdepth 2 -type f,l -name Snakefile | head -n 1) != "" ]]; then
+                                    main_dir=$(dirname $(find $prj_root/$cur_prj -maxdepth 2 -type f,l -name Snakefile | head -n 1))
+                                else
+                                    main_dir="$prj_root/$cur_prj"
+                                fi
+								cd $main_dir
 						else
 								cd $prj_root
 						fi
