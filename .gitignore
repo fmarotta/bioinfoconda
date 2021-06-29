@@ -1,6 +1,5 @@
 bioinfotree
 bioinfoconda/log/*
-bioinfoconda/gitlab
 miniconda3
 prj/*
 !prj/.gitignore

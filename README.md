@@ -1,25 +1,44 @@
 # Bioinfoconda
 
-An environment to manage workflows for data analysis projects, based on 
-Conda environments and easily exportable to Docker images.
+> An environment to manage workflows for data analysis projects, based 
+> on Conda environments and easily exportable to Docker images.
 
-In Bioinfoconda, each project has its own directory, conda environment, 
-local libraries and executables. As soon as you `cd` into the project 
-directory, the environment is automatically set up with project-specific 
-files. Bioinfoconda also provides a way to download and store 
-third-party data sets in an organised fashion. Projects will also be 
-easily incapsulated in Docker containers.
+Often, computational analyses are performed on powerful dedicated 
+servers or clusters. This means that the same machine needs to contain 
+all the code dependencies for all of the projects. A common solution is 
+to use [environment modules](http://modules.sourceforge.net/), that 
+allow one to load only the specific packages that are needed. 
+Environment modules allows many packages (and many versions of the same 
+package) to be installed on the computer, but only a few of them are 
+loaded by the user at any given time, according to what is needed. This 
+setup usually requires a system administrator to install all the modules 
+and manage them in a centralised fashion.
+
+Bioinfoconda adopts a different phylosophy, based on the doctrine of the
+so-called 'project-centrism'. The infrastructure is decentralised so
+that each project is responsible for its own software dependencies, and
+anybody that works on the project can (and should) install the packages
+that are needed, either through conda or with a manual compilation. In
+Bioinfoconda, each project has its own directory, conda environment,
+local libraries and executables. As soon as you `cd` into the project
+directory, the environment is automatically set up with project-specific
+files. There is no need to employ a full-time system administrator,
+as users can autonomously install the packages. Another important
+feature of Bioinfoconda is that it provides a way to download and store
+third-party data sets in an organised and self-documenting fashion.
+Last, but not least, projects can also be easily incapsulated in Docker
+containers.
 
 ## Installation Instructions (Linux only)
 
 1. Clone this repository; if you want a system-wide installation and 
-   have root permissions, you can clone it for instance directly under 
-the root directory, while if you are an unprivileged user you can clone 
-it under your home directory.
+have root permissions, you can clone it for instance directly under the 
+root directory, while if you are an unprivileged user you can clone it 
+under your home directory.
 	* `git clone https://github.com/fmarotta/bioinfoconda`
 
-2. Install Miniconda (you can install it in any path, but if you want to 
-   have everything in a place, install it under bioinfoconda)
+2. Install Miniconda (you can install it in any path, but if you want to
+have everything in one place, install it under bioinfoconda)
     * Follow the instructions [here](https://conda.io/docs/user-guide/install/index.html)
 
 2. Install [mamba](https://github.com/mamba-org/mamba) in the base conda 
@@ -31,30 +50,45 @@ environment.
 system)
     * See [here](https://github.com/direnv/direnv) for the instructions
 
-4. (Optional) Install Docker
+4. Create a group on GitLab and obtain an API token
+    * This will allow Bioinfoconda to automatically create a remote 
+      repository for each new project
+    * Read [this documentation](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html)
+    * Edit *$BIOINFO_ROOT/bioinfoconda/gitlab/config* and add the 
+      username of your GitLab account, the group name, and the token. 
+Note that the first line of this file is only a header and the second 
+line initially contains some dummy values.
+
+5. (Optional) Install Docker
     * Instructions [here](https://docs.docker.com/install/)
 
-5. (Optional) Install Bioinfotree
+6. (Optional) Install Bioinfotree
     * [Bioinfotree](https://bitbucket.org/irccit/bit_public/src/ircc_common/) 
-    is a set of bioinformatic tools
+      is a set of bioinformatic tools
     * If you know about Bioinfotree at all, you'll probably also know 
     how to install it
 
-5. Set up the environment
+7. Set up the environment
     * Set BIOINFO\_ROOT to the path where you cloned the repository
     * Add bioinfoconda's executables to your PATH
     * Add miniconda's executables to your PATH
     * Make sure you have LC\_ALL set
     * Configure the bashrc so that direnv works
-    * Add bioinfotree's executables to your PATH
-    * Add bioinfotree's python and perl libraries to the environment
+    * (Only if you use bioinfotree) Add bioinfotree's executables to 
+      your PATH
+    * (Only if you use bioinfotree) Add bioinfotree's python and perl 
+      libraries to the environment
 
-6. (Useful in a multi-user system) Create a 'bioinfoconda' group and fix 
+8. (Useful in a multi-user system) Create a 'bioinfoconda' group and fix 
    the directory permissions (then add the users supposed to use 
 bioinfoconda to the 'bioinfoconda' group)
     * `sudo addgroup bioinfoconda`
     * `sudo chown -R root:bioinfoconda $BIOINFO_ROOT`
     * `sudo chmod -R 2775 $BIOINFO_ROOT`
+
+9. Having troubles?
+    * Drop an e-mail to [fmarotta](https://github.com/fmarotta), he's 
+      always happy to help.
 
 ---
 
@@ -69,7 +103,7 @@ Bioinfoconda
 # Export environment variables
 export LC_ALL="en_US.utf8"
 export BIOINFO_ROOT="/bioinfoconda"
-export PATH="$BIOINFO_ROOT/bioinfoconda/bin:/bioinfoconda/miniconda/bin:$PATH"
+export PATH="$BIOINFO_ROOT/bioinfoconda/bin:$CONDA_ROOT/bin:$PATH"
 # If you have bioinfotree add also the following three exports
 # export PATH="$BIOINFO_ROOT/bioinfotree/local/bin:$PATH"
 # export PYTHONPATH="$BIOINFO_ROOT/bioinfotree/local/lib/python:$PYTHONPATH"
@@ -94,8 +128,7 @@ PS1='$(show_conda_env)'$PS1
 ```
 
 If you are the system administrator (or if you have a great influence 
-over him/her), you may as well put the environment variables in 
-*/etc/environment* and append the other instructions to 
+over him/her), you may as well put these instructions into 
 */etc/skel/.bashrc*, so that the configuration will be available to all 
 new users.
 
